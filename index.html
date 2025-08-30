@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContainerTrack Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Login Page -->
+    <div class="login-page" id="loginPage">
+        <div class="login-container">
+            <div class="login-header">
+                <h2><i class="fas fa-box"></i> ContainerTrack Pro</h2>
+                <p>Please log in to continue</p>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="e.g., admin" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="e.g., password123" required>
+                </div>
+                <p class="login-error" id="loginError">Invalid username or password.</p>
+                <button type="submit" class="login-btn">Login</button>
+                 <div class="login-info">
+                    <p><strong>Use one of the following credentials:</strong></p>
+                    <ul>
+                        <li><strong>Admin:</strong> admin / password123</li>
+                        <li><strong>Manager:</strong> manager / password123</li>
+                        <li><strong>Viewer:</strong> viewer / password123</li>
+                    </ul>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="appContainer" style="display: none;">
+        <div class="container">
+            <!-- Sidebar -->
+            <div class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <h2><i class="fas fa-box"></i> ContainerTrack Pro</h2>
+                </div>
+                <div class="sidebar-menu">
+                    <div class="menu-item active">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </div>
+                    <div class="menu-item">
+                        <i class="fas fa-boxes"></i>
+                        <span>Containers</span>
+                    </div>
+                    <div class="menu-item">
+                        <i class="fas fa-ship"></i>
+                        <span>Vessels</span>
+                    </div>
+                    <div class="menu-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Locations</span>
+                    </div>
+                    <div class="menu-item admin-only">
+                        <i class="fas fa-users"></i>
+                        <span>User Management</span>
+                    </div>
+                    <div class="menu-item admin-only manager-only">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </div>
+                    <div class="menu-item">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Reports</span>
+                    </div>
+                    <div class="menu-item" id="logoutButton">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="main-content" id="mainContent">
+                <!-- Header -->
+                <div class="header">
+                    <div class="header-left">
+                        <div class="toggle-sidebar" id="toggleSidebar">
+                            <i class="fas fa-bars"></i>
+                        </div>
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="Search containers...">
+                        </div>
+                    </div>
+                    <div class="header-right">
+                        <div class="notification-bell">
+                            <i class="fas fa-bell"></i>
+                            <span class="badge">3</span>
+                        </div>
+                        <div class="user-profile">
+                            <div class="user-avatar" id="userAvatar">A</div>
+                            <div class="user-info">
+                                <div class="user-name" id="userName">Administrator</div>
+                                <div class="user-role" id="userRole">Admin</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Content -->
+                <div class="dashboard">
+                    <div class="page-title">
+                        <h1>Container Tracking Dashboard</h1>
+                        <button class="action-btn btn-primary manager-only admin-only">
+                            <i class="fas fa-plus"></i> New Container
+                        </button>
+                    </div>
+
+                    <!-- Stats Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <h3>Total Containers</h3>
+                                <div class="stat-icon bg-primary">
+                                    <i class="fas fa-box"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value">1,248</div>
+                            <div class="stat-title">+12% from last month</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <h3>In Transit</h3>
+                                <div class="stat-icon bg-warning">
+                                    <i class="fas fa-ship"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value">384</div>
+                            <div class="stat-title">+5% from last week</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <h3>Delivered</h3>
+                                <div class="stat-icon bg-success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value">827</div>
+                            <div class="stat-title">+8% from last month</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <h3>Alerts</h3>
+                                <div class="stat-icon bg-danger">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value">12</div>
+                            <div class="stat-title">-3% from last week</div>
+                        </div>
+                    </div>
+
+                    <!-- Tables Section -->
+                    <div class="table-section">
+                        <!-- Containers Table -->
+                        <div class="table-card">
+                            <div class="table-header">
+                                <h3>Recent Containers</h3>
+                                <a href="#" class="view-all">View All</a>
+                            </div>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Container ID</th>
+                                            <th>Origin</th>
+                                            <th>Destination</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>CTN-58492</td>
+                                            <td>Shanghai</td>
+                                            <td>Los Angeles</td>
+                                            <td><span class="status status-in-transit">In Transit</span></td>
+                                            <td>
+                                                <button class="action-btn btn-secondary">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>CTN-38176</td>
+                                            <td>Rotterdam</td>
+                                            <td>New York</td>
+                                            <td><span class="status status-delivered">Delivered</span></td>
+                                            <td>
+                                                <button class="action-btn btn-secondary">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>CTN-65923</td>
+                                            <td>Busan</td>
+                                            <td>Long Beach</td>
+                                            <td><span class="status status-alert">Customs Hold</span></td>
+                                            <td>
+                                                <button class="action-btn btn-secondary">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>CTN-21785</td>
+                                            <td>Hamburg</td>
+                                            <td>Savannah</td>
+                                            <td><span class="status status-in-transit">In Transit</span></td>
+                                            <td>
+                                                <button class="action-btn btn-secondary">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>CTN-89432</td>
+                                            <td>Singapore</td>
+                                            <td>Seattle</td>
+                                            <td><span class="status status-pending">Pending</span></td>
+                                            <td>
+                                                <button class="action-btn btn-secondary">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Users Table (Admin Only) -->
+                        <div class="table-card admin-only">
+                            <div class="table-header">
+                                <h3>User Management</h3>
+                                <a href="#" class="view-all">View All</a>
+                            </div>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Email</th>
+                                            <th>Role</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>John Smith</td>
+                                            <td>john@example.com</td>
+                                            <td><span class="status role-admin">Administrator</span></td>
+                                            <td>
+                                                <button class="action-btn btn-secondary">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Emma Johnson</td>
+                                            <td>emma@example.com</td>
+                                            <td><span class="status role-manager">Manager</span></td>
+                                            <td>
+                                                <button class="action-btn btn-secondary">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Michael Brown</td>
+                                            <td>michael@example.com</td>
+                                            <td><span class="status role-viewer">Viewer</span></td>
+                                            <td>
+                                                <button class="action-btn btn-secondary">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="footer">
+                        <p>© 2023 ContainerTrack Pro | Version 2.1.0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mock user data
+            const users = {
+                admin: { password: 'password123', role: 'admin' },
+                manager: { password: 'password123', role: 'manager' },
+                viewer: { password: 'password123', role: 'viewer' }
+            };
+
+            // Page elements
+            const loginPage = document.getElementById('loginPage');
+            const appContainer = document.getElementById('appContainer');
+            const loginForm = document.getElementById('loginForm');
+            const loginError = document.getElementById('loginError');
+            const logoutButton = document.getElementById('logoutButton');
+
+            // App UI elements
+            const userAvatar = document.getElementById('userAvatar');
+            const userName = document.getElementById('userName');
+            const userRole = document.getElementById('userRole');
+            const adminElements = document.querySelectorAll('.admin-only');
+            const managerElements = document.querySelectorAll('.manager-only');
+            const toggleSidebar = document.getElementById('toggleSidebar');
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+
+            // Login functionality
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                if (users[username] && users[username].password === password) {
+                    loginPage.style.display = 'none';
+                    appContainer.style.display = 'block';
+                    loginError.style.display = 'none';
+                    document.getElementById('password').value = '';
+                    setUserRole(users[username].role);
+                } else {
+                    loginError.style.display = 'block';
+                }
+            });
+
+            // Logout functionality
+            logoutButton.addEventListener('click', function() {
+                appContainer.style.display = 'none';
+                loginPage.style.display = 'flex';
+            });
+            
+            // Toggle sidebar on mobile
+            toggleSidebar.addEventListener('click', function() {
+                sidebar.classList.toggle('active');
+                mainContent.classList.toggle('sidebar-active');
+            });
+            
+            function setUserRole(role) {
+                // Hide all role-specific elements first
+                adminElements.forEach(el => el.style.display = 'none');
+                managerElements.forEach(el => el.style.display = 'none');
+
+                // Update UI based on selected role
+                if (role === 'admin') {
+                    userAvatar.textContent = 'A';
+                    userAvatar.style.background = '#ef4444';
+                    userName.textContent = 'Administrator';
+                    userRole.textContent = 'Admin';
+                    
+                    // Show admin and manager elements
+                    adminElements.forEach(el => {
+                        el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid';
+                    });
+                    managerElements.forEach(el => {
+                       el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid';
+                    });
+                    
+                } else if (role === 'manager') {
+                    userAvatar.textContent = 'M';
+                    userAvatar.style.background = '#f59e0b';
+                    userName.textContent = 'Manager User';
+                    userRole.textContent = 'Manager';
+                    
+                    // Show only manager elements
+                     managerElements.forEach(el => {
+                       el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid';
+                    });
+                    
+                } else if (role === 'viewer') {
+                    userAvatar.textContent = 'V';
+                    userAvatar.style.background = '#64748b';
+                    userName.textContent = 'Viewer User';
+                    userRole.textContent = 'Viewer';
+                    // No extra elements to show for viewer
+                }
+            }
+        });
+    </script>
+</body>
+</html>
