@@ -17,26 +17,24 @@
             </div>
             <form id="loginForm">
                 <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" placeholder="e.g., admin" required>
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="e.g., admin@example.com" required>
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
                     <input type="password" id="password" placeholder="e.g., password123" required>
                 </div>
-                <p class="login-error" id="loginError">Invalid username or password.</p>
+                <p class="login-error" id="loginError">Invalid email or password.</p>
                 <button type="submit" class="login-btn">Login</button>
                  <div class="login-info">
-                    <p><strong>Use one of the following credentials:</strong></p>
-                    <ul>
-                        <li><strong>Admin:</strong> admin / password123</li>
-                        <li><strong>Manager:</strong> manager / password123</li>
-                        <li><strong>Viewer:</strong> viewer / password123</li>
-                    </ul>
+                    <p>Log in with the user accounts you create in your Firebase Authentication console.</p>
                 </div>
             </form>
         </div>
     </div>
+    
+    <!-- Sidebar Backdrop for Mobile -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
     <!-- Main App Container -->
     <div id="appContainer" style="display: none;">
@@ -182,62 +180,8 @@
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>CTN-58492</td>
-                                            <td>Shanghai</td>
-                                            <td>Los Angeles</td>
-                                            <td><span class="status status-in-transit">In Transit</span></td>
-                                            <td>
-                                                <button class="action-btn btn-secondary">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>CTN-38176</td>
-                                            <td>Rotterdam</td>
-                                            <td>New York</td>
-                                            <td><span class="status status-delivered">Delivered</span></td>
-                                            <td>
-                                                <button class="action-btn btn-secondary">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>CTN-65923</td>
-                                            <td>Busan</td>
-                                            <td>Long Beach</td>
-                                            <td><span class="status status-alert">Customs Hold</span></td>
-                                            <td>
-                                                <button class="action-btn btn-secondary">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>CTN-21785</td>
-                                            <td>Hamburg</td>
-                                            <td>Savannah</td>
-                                            <td><span class="status status-in-transit">In Transit</span></td>
-                                            <td>
-                                                <button class="action-btn btn-secondary">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>CTN-89432</td>
-                                            <td>Singapore</td>
-                                            <td>Seattle</td>
-                                            <td><span class="status status-pending">Pending</span></td>
-                                            <td>
-                                                <button class="action-btn btn-secondary">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
+                                    <tbody id="containers-table-body">
+                                        <!-- Data will be populated from Firestore -->
                                     </tbody>
                                 </table>
                             </div>
@@ -305,15 +249,29 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Mock user data
-            const users = {
-                admin: { password: 'password123', role: 'admin' },
-                manager: { password: 'password123', role: 'manager' },
-                viewer: { password: 'password123', role: 'viewer' }
-            };
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
+        // TODO: Add your own Firebase configuration from your Firebase project settings
+        const firebaseConfig = {
+            apiKey: "AIzaSyACbLKXVKBb6DJhCvZVQPq_36LYXQnowtI",
+            authDomain: "container-tracker-app-9e667.firebaseapp.com",
+            projectId: "container-tracker-app-9e667",
+            storageBucket: "container-tracker-app-9e667.firebasestorage.app",
+            messagingSenderId: "54664527552",
+            appId: "1:54664527552:web:e249a4b6df1afab555f725"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        document.addEventListener('DOMContentLoaded', function() {
             // Page elements
             const loginPage = document.getElementById('loginPage');
             const appContainer = document.getElementById('appContainer');
@@ -329,50 +287,73 @@
             const managerElements = document.querySelectorAll('.manager-only');
             const toggleSidebar = document.getElementById('toggleSidebar');
             const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('mainContent');
+            const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+
+            // Listen for authentication state changes
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    const userDocRef = doc(db, "users", user.uid);
+                    const userDocSnap = await getDoc(userDocRef);
+
+                    let role = 'viewer'; // Default role
+                    if (userDocSnap.exists()) {
+                       role = userDocSnap.data().role;
+                    }
+
+                    loginPage.style.display = 'none';
+                    appContainer.style.display = 'block';
+                    setUserRole(role, user.email);
+
+                } else {
+                    appContainer.style.display = 'none';
+                    loginPage.style.display = 'flex';
+                }
+            });
 
             // Login functionality
             loginForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                const username = document.getElementById('username').value;
+                const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
-                
-                if (users[username] && users[username].password === password) {
-                    loginPage.style.display = 'none';
-                    appContainer.style.display = 'block';
-                    loginError.style.display = 'none';
-                    document.getElementById('password').value = '';
-                    setUserRole(users[username].role);
-                } else {
-                    loginError.style.display = 'block';
-                }
+                loginError.style.display = 'none';
+
+                signInWithEmailAndPassword(auth, email, password)
+                    .catch((error) => {
+                        console.error("Login Error:", error);
+                        loginError.textContent = "Invalid email or password.";
+                        loginError.style.display = 'block';
+                    });
             });
 
             // Logout functionality
             logoutButton.addEventListener('click', function() {
-                appContainer.style.display = 'none';
-                loginPage.style.display = 'flex';
+                signOut(auth).catch((error) => {
+                    console.error("Logout Error:", error);
+                });
             });
             
             // Toggle sidebar on mobile
             toggleSidebar.addEventListener('click', function() {
                 sidebar.classList.toggle('active');
-                mainContent.classList.toggle('sidebar-active');
+                sidebarBackdrop.classList.toggle('active');
+            });
+
+            // Close sidebar when backdrop is clicked
+            sidebarBackdrop.addEventListener('click', function() {
+                sidebar.classList.remove('active');
+                sidebarBackdrop.classList.remove('active');
             });
             
-            function setUserRole(role) {
-                // Hide all role-specific elements first
+            function setUserRole(role, email) {
                 adminElements.forEach(el => el.style.display = 'none');
                 managerElements.forEach(el => el.style.display = 'none');
 
-                // Update UI based on selected role
                 if (role === 'admin') {
                     userAvatar.textContent = 'A';
                     userAvatar.style.background = '#ef4444';
-                    userName.textContent = 'Administrator';
+                    userName.textContent = email;
                     userRole.textContent = 'Admin';
                     
-                    // Show admin and manager elements
                     adminElements.forEach(el => {
                         el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid';
                     });
@@ -383,23 +364,23 @@
                 } else if (role === 'manager') {
                     userAvatar.textContent = 'M';
                     userAvatar.style.background = '#f59e0b';
-                    userName.textContent = 'Manager User';
+                    userName.textContent = email;
                     userRole.textContent = 'Manager';
                     
-                    // Show only manager elements
                      managerElements.forEach(el => {
                        el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid';
                     });
                     
-                } else if (role === 'viewer') {
-                    userAvatar.textContent = 'V';
+                } else { // Default to viewer
+                    userAvatar.textContent = email.charAt(0).toUpperCase();
                     userAvatar.style.background = '#64748b';
-                    userName.textContent = 'Viewer User';
+                    userName.textContent = email;
                     userRole.textContent = 'Viewer';
-                    // No extra elements to show for viewer
                 }
             }
         });
+
     </script>
 </body>
 </html>
+
