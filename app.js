@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, collection, onSnapshot, getDocs, writeBatch, serverTimestamp, addDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // TODO: Add your own Firebase configuration from your Firebase project settings
 const firebaseConfig = {
@@ -19,14 +19,12 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Page elements
+    // --- Page and UI Elements ---
     const loginPage = document.getElementById('loginPage');
     const appContainer = document.getElementById('appContainer');
     const loginForm = document.getElementById('loginForm');
     const loginError = document.getElementById('loginError');
     const logoutButton = document.getElementById('logoutButton');
-
-    // App UI elements
     const userAvatar = document.getElementById('userAvatar');
     const userName = document.getElementById('userName');
     const userRole = document.getElementById('userRole');
@@ -37,91 +35,179 @@ document.addEventListener('DOMContentLoaded', function() {
     const sidebarBackdrop = document.getElementById('sidebarBackdrop');
     const containersTableBody = document.getElementById('containers-table-body');
     
-    let containersUnsubscribe = null; // To hold the listener cleanup function
+    // --- New Container Modal Elements ---
+    const newContainerModal = document.getElementById('newContainerModal');
+    const newContainerBtn = document.getElementById('newContainerBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const cancelModalBtn = document.getElementById('cancelModalBtn');
+    const newContainerForm = document.getElementById('newContainerForm');
+    const formError = document.getElementById('formError');
 
-    // Listen for authentication state changes
+    let containersUnsubscribe = null;
+
+    // --- Authentication ---
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             const userDocRef = doc(db, "users", user.uid);
             const userDocSnap = await getDoc(userDocRef);
-
-            let role = 'viewer'; // Default role
+            let role = 'viewer';
             if (userDocSnap.exists()) {
                role = userDocSnap.data().role;
             }
-
             loginPage.style.display = 'none';
             appContainer.style.display = 'block';
             setUserRole(role, user.email);
-            
-            // Start listening for container data
             listenForContainers();
-
         } else {
             appContainer.style.display = 'none';
             loginPage.style.display = 'flex';
-            
-            // Stop listening for container data if user logs out
-            if (containersUnsubscribe) {
-                containersUnsubscribe();
-            }
+            if (containersUnsubscribe) containersUnsubscribe();
         }
     });
 
-    // Login functionality
-    loginForm.addEventListener('submit', function(e) {
+    // --- Event Listeners ---
+    loginForm.addEventListener('submit', handleLogin);
+    logoutButton.addEventListener('click', handleLogout);
+    toggleSidebar.addEventListener('click', toggleMobileSidebar);
+    sidebarBackdrop.addEventListener('click', toggleMobileSidebar);
+    newContainerBtn.addEventListener('click', openNewContainerModal);
+    closeModalBtn.addEventListener('click', closeNewContainerModal);
+    cancelModalBtn.addEventListener('click', closeNewContainerModal);
+    newContainerForm.addEventListener('submit', handleNewContainerSubmit);
+
+    // --- Functions ---
+    function handleLogin(e) {
         e.preventDefault();
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         loginError.style.display = 'none';
-
         signInWithEmailAndPassword(auth, email, password)
-            .catch((error) => {
+            .catch(error => {
                 console.error("Login Error:", error);
                 loginError.textContent = "Invalid email or password.";
                 loginError.style.display = 'block';
             });
-    });
+    }
 
-    // Logout functionality
-    logoutButton.addEventListener('click', function() {
-        signOut(auth).catch((error) => {
-            console.error("Logout Error:", error);
-        });
-    });
-    
-    // Toggle sidebar on mobile
-    toggleSidebar.addEventListener('click', function() {
+    function handleLogout() {
+        signOut(auth).catch(error => console.error("Logout Error:", error));
+    }
+
+    function toggleMobileSidebar() {
         sidebar.classList.toggle('active');
         sidebarBackdrop.classList.toggle('active');
-    });
+    }
+    
+    // --- New Container Modal Functions ---
+    async function openNewContainerModal() {
+        newContainerForm.reset();
+        formError.style.display = 'none';
+        await populateDropdowns();
+        newContainerModal.classList.remove('hidden');
+    }
 
-    // Close sidebar when backdrop is clicked
-    sidebarBackdrop.addEventListener('click', function() {
-        sidebar.classList.remove('active');
-        sidebarBackdrop.classList.remove('active');
-    });
+    function closeNewContainerModal() {
+        newContainerModal.classList.add('hidden');
+    }
+
+    async function populateDropdowns() {
+        // Populate Bookings
+        await populateSelectWithOptions('bookings', 'bookingNumber', 'bookingNumber');
+        // Populate Trucks
+        await populateSelectWithOptions('trucks', 'truckName', 'truckId');
+        // Populate Chassis
+        await populateSelectWithOptions('chassis', 'chassisName', 'chassisName');
+    }
+
+    async function populateSelectWithOptions(collectionName, fieldName, valueField) {
+        const selectElement = document.getElementById(collectionName.slice(0, -1)); // e.g., 'bookings' -> 'booking'
+        try {
+            const querySnapshot = await getDocs(collection(db, collectionName));
+            selectElement.innerHTML = `<option value="">-- Select ${collectionName.slice(0, -1)} --</option>`; // Clear old options
+            querySnapshot.forEach(doc => {
+                const data = doc.data();
+                const option = document.createElement('option');
+                option.value = data[valueField];
+                option.textContent = data[fieldName];
+                selectElement.appendChild(option);
+            });
+        } catch (error) {
+            console.error(`Error populating ${collectionName}:`, error);
+            selectElement.innerHTML = `<option value="">Error loading data</option>`;
+        }
+    }
+
+    async function handleNewContainerSubmit(e) {
+        e.preventDefault();
+        const containerNumber = document.getElementById('containerNumber').value.trim().toUpperCase();
+        const bookingNumber = document.getElementById('bookingNumber').value;
+        const truck = document.getElementById('truck').value;
+        const chassis = document.getElementById('chassis').value;
+
+        if (!containerNumber || !bookingNumber || !truck || !chassis) {
+            formError.textContent = 'Please fill out all fields.';
+            formError.style.display = 'block';
+            return;
+        }
+        
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+             formError.textContent = 'You must be logged in to perform this action.';
+             formError.style.display = 'block';
+             return;
+        }
+
+        try {
+            const batch = writeBatch(db);
+            
+            // 1. Create the main container document
+            const containerRef = doc(db, 'containers', containerNumber);
+            batch.set(containerRef, {
+                bookingNumber: bookingNumber,
+                currentStatus: "In Yard",
+                currentLocation: "Yard - Section A",
+                lastUpdatedAt: serverTimestamp()
+            });
+
+            // 2. Create the first event in the subcollection
+            const eventRef = doc(collection(db, 'containers', containerNumber, 'events'));
+            batch.set(eventRef, {
+                status: "Collected from Pier",
+                timestamp: serverTimestamp(),
+                userId: currentUser.uid,
+                details: {
+                    truckId: truck,
+                    chassisName: chassis
+                }
+            });
+
+            await batch.commit();
+            closeNewContainerModal();
+
+        } catch (error) {
+            console.error("Error saving new container:", error);
+            formError.textContent = 'Failed to save container. Please try again.';
+            formError.style.display = 'block';
+        }
+    }
     
     // --- Real-time Container Data ---
     function listenForContainers() {
         const containersRef = collection(db, 'containers');
         containersUnsubscribe = onSnapshot(containersRef, (snapshot) => {
-            containersTableBody.innerHTML = ''; // Clear existing table data
+            containersTableBody.innerHTML = '';
             if (snapshot.empty) {
                 containersTableBody.innerHTML = '<tr><td colspan="5">No containers found.</td></tr>';
                 return;
             }
-            
             snapshot.forEach(doc => {
                 const container = doc.data();
-                const containerId = doc.id; // The document ID is the container number
-                
+                const containerId = doc.id;
                 const statusClass = getStatusClass(container.currentStatus);
-
                 const row = `
                     <tr>
                         <td>${containerId}</td>
-                        <td>${container.origin || 'N/A'}</td>
+                        <td>${container.bookingNumber || 'N/A'}</td>
                         <td>${container.destination || 'N/A'}</td>
                         <td><span class="status ${statusClass}">${container.currentStatus}</span></td>
                         <td>
@@ -142,40 +228,30 @@ document.addEventListener('DOMContentLoaded', function() {
     function getStatusClass(status) {
         if (!status) return 'status-pending';
         const lowerStatus = status.toLowerCase();
-        if (lowerStatus.includes('transit')) return 'status-in-transit';
+        if (lowerStatus.includes('transit') || lowerStatus.includes('yard')) return 'status-in-transit';
         if (lowerStatus.includes('delivered')) return 'status-delivered';
         if (lowerStatus.includes('alert') || lowerStatus.includes('hold')) return 'status-alert';
-        return 'status-pending'; // Default
+        return 'status-pending';
     }
 
     function setUserRole(role, email) {
+        // ... existing setUserRole function ...
         adminElements.forEach(el => el.style.display = 'none');
         managerElements.forEach(el => el.style.display = 'none');
-
         if (role === 'admin') {
             userAvatar.textContent = 'A';
             userAvatar.style.background = '#ef4444';
             userName.textContent = email;
             userRole.textContent = 'Admin';
-            
-            adminElements.forEach(el => {
-                el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid';
-            });
-            managerElements.forEach(el => {
-               el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid';
-            });
-            
+            adminElements.forEach(el => { el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid'; });
+            managerElements.forEach(el => { el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid'; });
         } else if (role === 'manager') {
             userAvatar.textContent = 'M';
             userAvatar.style.background = '#f59e0b';
             userName.textContent = email;
             userRole.textContent = 'Manager';
-            
-             managerElements.forEach(el => {
-               el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid';
-            });
-            
-        } else { // Default to viewer
+            managerElements.forEach(el => { el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid'; });
+        } else {
             userAvatar.textContent = email.charAt(0).toUpperCase();
             userAvatar.style.background = '#64748b';
             userName.textContent = email;

@@ -10,6 +10,7 @@
 <body>
     <!-- Login Page -->
     <div class="login-page" id="loginPage">
+        <!-- ... existing login page code ... -->
         <div class="login-container">
             <div class="login-header">
                 <h2><i class="fas fa-box"></i> ContainerTrack Pro</h2>
@@ -41,6 +42,7 @@
         <div class="container">
             <!-- Sidebar -->
             <div class="sidebar" id="sidebar">
+                <!-- ... existing sidebar code ... -->
                 <div class="sidebar-header">
                     <h2><i class="fas fa-box"></i> ContainerTrack Pro</h2>
                 </div>
@@ -84,6 +86,7 @@
             <div class="main-content" id="mainContent">
                 <!-- Header -->
                 <div class="header">
+                    <!-- ... existing header code ... -->
                     <div class="header-left">
                         <div class="toggle-sidebar" id="toggleSidebar">
                             <i class="fas fa-bars"></i>
@@ -112,12 +115,12 @@
                 <div class="dashboard">
                     <div class="page-title">
                         <h1>Container Tracking Dashboard</h1>
-                        <button class="action-btn btn-primary manager-only admin-only">
+                        <button id="newContainerBtn" class="action-btn btn-primary manager-only admin-only">
                             <i class="fas fa-plus"></i> New Container
                         </button>
                     </div>
 
-                    <!-- Stats Grid -->
+                    <!-- ... existing dashboard content ... -->
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-header">
@@ -189,54 +192,7 @@
 
                         <!-- Users Table (Admin Only) -->
                         <div class="table-card admin-only">
-                            <div class="table-header">
-                                <h3>User Management</h3>
-                                <a href="#" class="view-all">View All</a>
-                            </div>
-                            <div class="table-container">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>User</th>
-                                            <th>Email</th>
-                                            <th>Role</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>John Smith</td>
-                                            <td>john@example.com</td>
-                                            <td><span class="status role-admin">Administrator</span></td>
-                                            <td>
-                                                <button class="action-btn btn-secondary">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>Emma Johnson</td>
-                                            <td>emma@example.com</td>
-                                            <td><span class="status role-manager">Manager</span></td>
-                                            <td>
-                                                <button class="action-btn btn-secondary">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>Michael Brown</td>
-                                            <td>michael@example.com</td>
-                                            <td><span class="status role-viewer">Viewer</span></td>
-                                            <td>
-                                                <button class="action-btn btn-secondary">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                            <!-- ... existing user table ... -->
                         </div>
                     </div>
 
@@ -246,6 +202,45 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Add New Container Modal -->
+    <div class="modal-backdrop hidden" id="newContainerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Collect New Container</h2>
+                <button class="close-modal" id="closeModalBtn">&times;</button>
+            </div>
+            <form id="newContainerForm">
+                <div class="form-group">
+                    <label for="containerNumber">Container Number</label>
+                    <input type="text" id="containerNumber" placeholder="e.g., MSMU1234567" required>
+                </div>
+                <div class="form-group">
+                    <label for="bookingNumber">Booking Number</label>
+                    <select id="bookingNumber" required>
+                        <option value="">Loading Bookings...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="truck">Truck Used</label>
+                    <select id="truck" required>
+                        <option value="">Loading Trucks...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="chassis">Chassis Used</label>
+                    <select id="chassis" required>
+                        <option value="">Loading Chassis...</option>
+                    </select>
+                </div>
+                <p class="form-error" id="formError"></p>
+                <div class="modal-footer">
+                    <button type="button" class="action-btn btn-secondary" id="cancelModalBtn">Cancel</button>
+                    <button type="submit" class="action-btn btn-primary">Save Container</button>
+                </div>
+            </form>
         </div>
     </div>
 
