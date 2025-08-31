@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // TODO: Add your own Firebase configuration from your Firebase project settings
 const firebaseConfig = {
@@ -35,6 +35,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleSidebar = document.getElementById('toggleSidebar');
     const sidebar = document.getElementById('sidebar');
     const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+    const containersTableBody = document.getElementById('containers-table-body');
+    
+    let containersUnsubscribe = null; // To hold the listener cleanup function
 
     // Listen for authentication state changes
     onAuthStateChanged(auth, async (user) => {
@@ -50,10 +53,18 @@ document.addEventListener('DOMContentLoaded', function() {
             loginPage.style.display = 'none';
             appContainer.style.display = 'block';
             setUserRole(role, user.email);
+            
+            // Start listening for container data
+            listenForContainers();
 
         } else {
             appContainer.style.display = 'none';
             loginPage.style.display = 'flex';
+            
+            // Stop listening for container data if user logs out
+            if (containersUnsubscribe) {
+                containersUnsubscribe();
+            }
         }
     });
 
@@ -91,6 +102,52 @@ document.addEventListener('DOMContentLoaded', function() {
         sidebarBackdrop.classList.remove('active');
     });
     
+    // --- Real-time Container Data ---
+    function listenForContainers() {
+        const containersRef = collection(db, 'containers');
+        containersUnsubscribe = onSnapshot(containersRef, (snapshot) => {
+            containersTableBody.innerHTML = ''; // Clear existing table data
+            if (snapshot.empty) {
+                containersTableBody.innerHTML = '<tr><td colspan="5">No containers found.</td></tr>';
+                return;
+            }
+            
+            snapshot.forEach(doc => {
+                const container = doc.data();
+                const containerId = doc.id; // The document ID is the container number
+                
+                const statusClass = getStatusClass(container.currentStatus);
+
+                const row = `
+                    <tr>
+                        <td>${containerId}</td>
+                        <td>${container.origin || 'N/A'}</td>
+                        <td>${container.destination || 'N/A'}</td>
+                        <td><span class="status ${statusClass}">${container.currentStatus}</span></td>
+                        <td>
+                            <button class="action-btn btn-secondary">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                containersTableBody.innerHTML += row;
+            });
+        }, (error) => {
+            console.error("Error listening for containers:", error);
+            containersTableBody.innerHTML = '<tr><td colspan="5">Error loading data.</td></tr>';
+        });
+    }
+    
+    function getStatusClass(status) {
+        if (!status) return 'status-pending';
+        const lowerStatus = status.toLowerCase();
+        if (lowerStatus.includes('transit')) return 'status-in-transit';
+        if (lowerStatus.includes('delivered')) return 'status-delivered';
+        if (lowerStatus.includes('alert') || lowerStatus.includes('hold')) return 'status-alert';
+        return 'status-pending'; // Default
+    }
+
     function setUserRole(role, email) {
         adminElements.forEach(el => el.style.display = 'none');
         managerElements.forEach(el => el.style.display = 'none');
@@ -126,3 +183,4 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
