@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, onSnapshot, getDocs, writeBatch, serverTimestamp, addDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, collection, onSnapshot, getDocs, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // TODO: Add your own Firebase configuration from your Firebase project settings
 const firebaseConfig = {
@@ -111,24 +111,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function populateDropdowns() {
-        // Populate Bookings
-        await populateSelectWithOptions('bookings', 'bookingNumber', 'bookingNumber');
-        // Populate Trucks
-        await populateSelectWithOptions('trucks', 'truckName', 'truckId');
-        // Populate Chassis
-        await populateSelectWithOptions('chassis', 'chassisName', 'chassisName');
+        await populateSelectWithOptions('bookings', 'bookingNumber', 'bookingNumber', 'bookingNumber');
+        await populateSelectWithOptions('trucks', 'truck', 'truckName');
+        await populateSelectWithOptions('chassis', 'chassis', 'chassisName');
     }
 
-    async function populateSelectWithOptions(collectionName, fieldName, valueField) {
-        const selectElement = document.getElementById(collectionName.slice(0, -1)); // e.g., 'bookings' -> 'booking'
+    async function populateSelectWithOptions(collectionName, selectId, textField) {
+        const selectElement = document.getElementById(selectId);
         try {
             const querySnapshot = await getDocs(collection(db, collectionName));
-            selectElement.innerHTML = `<option value="">-- Select ${collectionName.slice(0, -1)} --</option>`; // Clear old options
+            selectElement.innerHTML = `<option value="">-- Select ${selectId} --</option>`;
             querySnapshot.forEach(doc => {
                 const data = doc.data();
                 const option = document.createElement('option');
-                option.value = data[valueField];
-                option.textContent = data[fieldName];
+                option.value = doc.id; // Use the document ID as the value for robust referencing
+                option.textContent = data[textField];
                 selectElement.appendChild(option);
             });
         } catch (error) {
@@ -140,11 +137,11 @@ document.addEventListener('DOMContentLoaded', function() {
     async function handleNewContainerSubmit(e) {
         e.preventDefault();
         const containerNumber = document.getElementById('containerNumber').value.trim().toUpperCase();
-        const bookingNumber = document.getElementById('bookingNumber').value;
-        const truck = document.getElementById('truck').value;
-        const chassis = document.getElementById('chassis').value;
+        const bookingId = document.getElementById('bookingNumber').value;
+        const truckId = document.getElementById('truck').value;
+        const chassisId = document.getElementById('chassis').value;
 
-        if (!containerNumber || !bookingNumber || !truck || !chassis) {
+        if (!containerNumber || !bookingId || !truckId || !chassisId) {
             formError.textContent = 'Please fill out all fields.';
             formError.style.display = 'block';
             return;
@@ -158,12 +155,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         try {
+            // Get the actual booking number string from the booking document
+            const bookingDoc = await getDoc(doc(db, 'bookings', bookingId));
+            const bookingNumberString = bookingDoc.exists() ? bookingDoc.data().bookingNumber : 'Unknown';
+
             const batch = writeBatch(db);
             
             // 1. Create the main container document
             const containerRef = doc(db, 'containers', containerNumber);
             batch.set(containerRef, {
-                bookingNumber: bookingNumber,
+                bookingNumber: bookingNumberString,
                 currentStatus: "In Yard",
                 currentLocation: "Yard - Section A",
                 lastUpdatedAt: serverTimestamp()
@@ -176,8 +177,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 timestamp: serverTimestamp(),
                 userId: currentUser.uid,
                 details: {
-                    truckId: truck,
-                    chassisName: chassis
+                    truckId: truckId,
+                    chassisId: chassisId
                 }
             });
 
@@ -208,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <tr>
                         <td>${containerId}</td>
                         <td>${container.bookingNumber || 'N/A'}</td>
-                        <td>${container.destination || 'N/A'}</td>
+                        <td>${container.currentLocation || 'N/A'}</td>
                         <td><span class="status ${statusClass}">${container.currentStatus}</span></td>
                         <td>
                             <button class="action-btn btn-secondary">
@@ -235,7 +236,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setUserRole(role, email) {
-        // ... existing setUserRole function ...
         adminElements.forEach(el => el.style.display = 'none');
         managerElements.forEach(el => el.style.display = 'none');
         if (role === 'admin') {
