@@ -206,7 +206,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Collect New Container</h2>
-                <button class="close-modal" id="closeModalBtn">&times;</button>
+                <button class="close-modal" id="closeNewContainerModalBtn">&times;</button>
             </div>
             <form id="newContainerForm">
                 <div class="form-group">
@@ -233,12 +233,61 @@
                 </div>
                 <p class="form-error" id="formError"></p>
                 <div class="modal-footer">
-                    <button type="button" class="action-btn btn-secondary" id="cancelModalBtn">Cancel</button>
+                    <button type="button" class="action-btn btn-secondary" id="cancelNewContainerModalBtn">Cancel</button>
                     <button type="submit" class="action-btn btn-primary">Save Container</button>
                 </div>
             </form>
         </div>
     </div>
+    
+    <!-- Container Details Modal -->
+    <div class="modal-backdrop hidden" id="containerDetailsModal">
+        <div class="modal-content-lg">
+            <div class="modal-header">
+                <h2 id="detailsModalTitle">Container Details</h2>
+                <button class="close-modal" id="closeDetailsModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="details-grid">
+                    <!-- Left side: Current Info & Update Form -->
+                    <div class="details-main">
+                        <h3>Current Status</h3>
+                        <div id="currentContainerInfo">
+                            <!-- Current data will be populated here -->
+                        </div>
+                        <hr>
+                        <h3 class="manager-only admin-only">Update Status</h3>
+                        <form id="updateStatusForm" class="manager-only admin-only">
+                             <div class="form-group">
+                                <label for="newStatus">New Status</label>
+                                <select id="newStatus" required>
+                                    <option value="In Yard">In Yard</option>
+                                    <option value="Placed in Tilter">Placed in Tilter</option>
+                                    <option value="Loading Complete">Loading Complete</option>
+                                    <option value="Sent to Workshop">Sent to Workshop</option>
+                                    <option value="Returned to Pier">Returned to Pier</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="newLocation">New Location</label>
+                                <input type="text" id="newLocation" placeholder="e.g., Tilter 3" required>
+                            </div>
+                             <p class="form-error" id="updateFormError"></p>
+                            <button type="submit" class="action-btn btn-primary">Add Event</button>
+                        </form>
+                    </div>
+                    <!-- Right side: Event History -->
+                    <div class="details-history">
+                        <h3>Event History</h3>
+                        <div id="eventHistoryList">
+                            <!-- History will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Link to the new main JavaScript file -->
     <script type="module" src="js/main.js" defer></script>

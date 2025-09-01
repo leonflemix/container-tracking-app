@@ -1,25 +1,26 @@
 // js/firestore.js
 // Contains all logic for interacting with the Firestore database.
 
-import { doc, getDoc, collection, onSnapshot, getDocs, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { doc, getDoc, collection, onSnapshot, getDocs, writeBatch, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { auth, db } from './firebase.js';
-import { renderContainersTable, uiElements } from './ui.js';
+import { renderContainersTable, uiElements, openDetailsModal, populateDetailsModal, closeDetailsModal } from './ui.js';
 
 let containersUnsubscribe = null;
+let currentContainerId = null; // To keep track of which container is open in the details modal
 
-// --- Firestore Functions ---
+// --- Firestore Read Functions ---
 export function listenForContainers() {
     const containersRef = collection(db, 'containers');
     containersUnsubscribe = onSnapshot(containersRef, (snapshot) => {
         if (snapshot.empty) {
-            renderContainersTable([]);
+            renderContainersTable([], handleViewContainer);
             return;
         }
         const containers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderContainersTable(containers);
+        renderContainersTable(containers, handleViewContainer);
     }, (error) => {
         console.error("Error listening for containers:", error);
-        renderContainersTable(null); // Indicate an error state
+        renderContainersTable(null, handleViewContainer); // Indicate an error state
     });
 }
 
@@ -30,6 +31,32 @@ export function stopListeningForContainers() {
     }
 }
 
+async function handleViewContainer(containerId) {
+    currentContainerId = containerId;
+    try {
+        const containerDocRef = doc(db, 'containers', containerId);
+        const containerDocSnap = await getDoc(containerDocRef);
+
+        if (!containerDocSnap.exists()) {
+            console.error("Container not found!");
+            return;
+        }
+
+        const eventsRef = collection(db, 'containers', containerId, 'events');
+        const q = query(eventsRef, orderBy('timestamp', 'desc'));
+        const eventsSnapshot = await getDocs(q);
+        const events = eventsSnapshot.docs;
+
+        populateDetailsModal(containerDocSnap, events);
+        openDetailsModal();
+
+    } catch (error) {
+        console.error("Error fetching container details:", error);
+    }
+}
+
+
+// --- Firestore Write Functions ---
 export async function populateDropdowns() {
     await populateSelectWithOptions('bookings', 'bookingNumber', 'bookingNumber');
     await populateSelectWithOptions('trucks', 'truck', 'truckName');
@@ -93,16 +120,66 @@ export async function handleNewContainerSubmit(e) {
             status: "Collected from Pier",
             timestamp: serverTimestamp(),
             userId: currentUser.uid,
-            details: { truckId, chassisId }
+            details: { truckId, chassisId, newLocation: "Yard - Section A" }
         });
 
         await batch.commit();
-        uiElements.newContainerModal.classList.add('hidden');
+        closeNewContainerModal();
 
     } catch (error) {
         console.error("Error saving new container:", error);
         uiElements.formError.textContent = 'Failed to save container. Please try again.';
         uiElements.formError.style.display = 'block';
+    }
+}
+
+export async function handleUpdateStatusSubmit(e) {
+    e.preventDefault();
+    if (!currentContainerId) return;
+
+    const newStatus = uiElements.updateStatusForm.newStatus.value;
+    const newLocation = uiElements.updateStatusForm.newLocation.value.trim();
+
+    if (!newStatus || !newLocation) {
+        uiElements.updateFormError.textContent = 'Please fill out all fields.';
+        uiElements.updateFormError.style.display = 'block';
+        return;
+    }
+
+    const currentUser = auth.currentUser;
+     if (!currentUser) {
+         uiElements.updateFormError.textContent = 'You must be logged in.';
+         uiElements.updateFormError.style.display = 'block';
+         return;
+    }
+
+    try {
+        const batch = writeBatch(db);
+
+        // 1. Update the main container document
+        const containerRef = doc(db, 'containers', currentContainerId);
+        batch.update(containerRef, {
+            currentStatus: newStatus,
+            currentLocation: newLocation,
+            lastUpdatedAt: serverTimestamp()
+        });
+        
+        // 2. Add a new event to the history
+        const eventRef = doc(collection(db, 'containers', currentContainerId, 'events'));
+        batch.set(eventRef, {
+            status: newStatus,
+            timestamp: serverTimestamp(),
+            userId: currentUser.uid,
+            details: { newLocation }
+        });
+
+        await batch.commit();
+        closeDetailsModal();
+
+    } catch (error) {
+        console.error("Error updating container status:", error);
+        uiElements.updateFormError.textContent = 'Failed to update status.';
+        uiElements.updateFormError.style.display = 'block';
     }
 }
 

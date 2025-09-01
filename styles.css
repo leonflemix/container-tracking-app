@@ -67,15 +67,16 @@ body {
     font-weight: 500;
 }
 
-.form-group input {
+.form-group input, .form-group select {
     width: 100%;
     padding: 0.75rem;
     border: 1px solid #e2e8f0;
     border-radius: 4px;
     transition: border-color 0.2s;
+    background-color: white;
 }
 
-.form-group input:focus {
+.form-group input:focus, .form-group select:focus {
     outline: none;
     border-color: var(--primary);
 }
@@ -429,7 +430,7 @@ tbody tr:hover {
     margin-top: 2rem;
 }
 
-/* --- New Container Modal Styles --- */
+/* --- Modal Styles --- */
 .modal-backdrop {
     position: fixed;
     top: 0;
@@ -443,6 +444,7 @@ tbody tr:hover {
     z-index: 1000;
     opacity: 1;
     transition: opacity 0.3s ease;
+    padding: 1rem;
 }
 
 .modal-backdrop.hidden {
@@ -450,17 +452,23 @@ tbody tr:hover {
     pointer-events: none;
 }
 
-.modal-content {
+.modal-content, .modal-content-lg {
     background: white;
     border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
+    width: 100%;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
     transform: scale(1);
     transition: transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
 }
+.modal-content { max-width: 500px; }
+.modal-content-lg { max-width: 900px; }
 
-.modal-backdrop.hidden .modal-content {
+
+.modal-backdrop.hidden .modal-content,
+.modal-backdrop.hidden .modal-content-lg {
     transform: scale(0.95);
 }
 
@@ -484,16 +492,13 @@ tbody tr:hover {
     color: var(--secondary);
 }
 
-#newContainerForm {
+.modal-body {
     padding: 1.5rem;
+    overflow-y: auto;
 }
 
-#newContainerForm .form-group select {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
-    background: white; /* Ensures select arrow is visible */
+#newContainerForm {
+    padding: 1.5rem;
 }
 
 .modal-footer {
@@ -513,6 +518,58 @@ tbody tr:hover {
     margin-top: 1rem;
     display: none;
 }
+
+/* --- Container Details Modal Specific Styles --- */
+.details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+.details-main h3, .details-history h3 {
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+.details-main hr {
+    margin: 1.5rem 0;
+    border: none;
+    border-top: 1px solid #e2e8f0;
+}
+#currentContainerInfo p {
+    margin-bottom: 0.5rem;
+}
+#currentContainerInfo p strong {
+    display: inline-block;
+    width: 120px;
+    color: var(--secondary);
+}
+#eventHistoryList {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+.event-item {
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    background: #f8fafc;
+}
+.event-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+.event-time {
+    font-size: 0.8rem;
+    color: var(--secondary);
+    font-weight: normal;
+}
+.event-details {
+    font-size: 0.9rem;
+    color: var(--secondary);
+}
+
 
 /* Mobile Responsiveness */
 .sidebar-backdrop {
@@ -554,7 +611,9 @@ tbody tr:hover {
     .stats-grid {
         grid-template-columns: 1fr;
     }
-
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
     .search-box {
         display: none;
     }
@@ -571,3 +630,4 @@ tbody tr:hover {
         display: none;
     }
 }
+
