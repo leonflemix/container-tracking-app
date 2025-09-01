@@ -3,6 +3,8 @@
 
 import { populateDropdowns } from './firestore.js';
 
+let currentContainerForModal = null; // Store data for the container currently in the details modal
+
 // --- UI Element References ---
 export const uiElements = {
     loginPage: document.getElementById('loginPage'),
@@ -33,6 +35,9 @@ export const uiElements = {
     eventHistoryList: document.getElementById('eventHistoryList'),
     updateStatusForm: document.getElementById('updateStatusForm'),
     updateFormError: document.getElementById('updateFormError'),
+    newStatus: document.getElementById('newStatus'),
+    locationFormGroup: document.getElementById('locationFormGroup'),
+    locationInputContainer: document.getElementById('locationInputContainer'),
 };
 
 // --- UI Functions ---
@@ -47,9 +52,7 @@ export function showLogin() {
 }
 
 export function setUserRoleUI(role, email) {
-    const isManagerOrAdmin = role === 'admin' || role === 'manager';
-    
-    document.body.dataset.userRole = role; // Set role on body for CSS selectors if needed
+    document.body.dataset.userRole = role;
 
     uiElements.adminElements.forEach(el => el.style.display = 'none');
     uiElements.managerElements.forEach(el => el.style.display = 'none');
@@ -108,7 +111,7 @@ function getStatusClass(status) {
     if (lowerStatus.includes('delivered') || lowerStatus.includes('pier')) return 'status-delivered';
     if (lowerStatus.includes('alert') || lowerStatus.includes('hold')) return 'status-alert';
     if (lowerStatus.includes('tilter')) return 'status-warning';
-    if (lowerStatus.includes('workshop')) return 'status-danger';
+    if (lowerStatus.includes('workshop') || lowerStatus.includes('squish')) return 'status-danger';
     return 'status-pending';
 }
 
@@ -138,19 +141,19 @@ export function closeDetailsModal() {
 }
 
 export function populateDetailsModal(containerDoc, events) {
+    currentContainerForModal = { id: containerDoc.id, ...containerDoc.data() };
+    
     uiElements.detailsModalTitle.textContent = `Container: ${containerDoc.id}`;
     
-    // Populate current info
     uiElements.currentContainerInfo.innerHTML = `
         <p><strong>Booking #:</strong> ${containerDoc.data().bookingNumber}</p>
         <p><strong>Current Status:</strong> <span class="status ${getStatusClass(containerDoc.data().currentStatus)}">${containerDoc.data().currentStatus}</span></p>
         <p><strong>Current Location:</strong> ${containerDoc.data().currentLocation}</p>
     `;
 
-    // Populate event history
     uiElements.eventHistoryList.innerHTML = '';
     if (events.length === 0) {
-        uiElements.eventHistoryList.innerHTML = '<p>No history found for this container.</p>';
+        uiElements.eventHistoryList.innerHTML = '<p>No history found.</p>';
         return;
     }
 
@@ -165,10 +168,72 @@ export function populateDetailsModal(containerDoc, events) {
                 <span class="event-time">${timestamp}</span>
             </div>
             <div class="event-details">
-                <p>User: ${eventData.userId.substring(0,8)}... | Location: ${eventData.details.newLocation || containerDoc.data().currentLocation}</p>
+                <p>User: ${eventData.userId ? eventData.userId.substring(0,8) : 'N/A'}... | Location: ${eventData.details.newLocation || 'N/A'}</p>
             </div>
         `;
         uiElements.eventHistoryList.appendChild(eventEl);
     });
+
+    // Set initial state for the update form
+    uiElements.updateStatusForm.reset();
+    uiElements.updateFormError.style.display = 'none';
+    uiElements.newStatus.value = containerDoc.data().currentStatus || 'In Yard';
+    handleStatusChange(); // Trigger the logic to show the correct location input
+}
+
+export function handleStatusChange() {
+    const selectedStatus = uiElements.newStatus.value;
+    const locationFormGroup = uiElements.locationFormGroup;
+    const locationInputContainer = uiElements.locationInputContainer;
+    locationInputContainer.innerHTML = ''; // Clear previous input
+
+    switch (selectedStatus) {
+        case 'Placed in Tilter':
+            locationFormGroup.style.display = 'block';
+            const select = document.createElement('select');
+            select.id = 'newLocation';
+            select.className = 'form-control'; // Ensure styling
+            select.innerHTML = `
+                <option value="SHRED">SHRED</option>
+                <option value="SCALE">SCALE</option>
+                <option value="TRACK">TRACK</option>
+            `;
+            locationInputContainer.appendChild(select);
+            break;
+
+        case 'Loading Complete':
+            locationFormGroup.style.display = 'block';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'newLocation';
+            input.required = true;
+            
+            const lastLocation = currentContainerForModal.currentLocation || '';
+            if (lastLocation.match(/SHRED|SCALE|TRACK/i)) {
+                 input.value = lastLocation;
+            } else {
+                input.placeholder = "Confirm tilter location (e.g., SHRED)";
+            }
+            locationInputContainer.appendChild(input);
+            break;
+        
+        case 'In Yard':
+        case 'Sent to Workshop':
+        case 'Squish':
+        case 'Ready':
+        case 'Returned to Pier':
+            locationFormGroup.style.display = 'none';
+            break;
+        
+        default:
+            locationFormGroup.style.display = 'block';
+             const defaultInput = document.createElement('input');
+            defaultInput.type = 'text';
+            defaultInput.id = 'newLocation';
+            defaultInput.required = true;
+            defaultInput.placeholder = 'Enter location';
+            locationInputContainer.appendChild(defaultInput);
+            break;
+    }
 }
 

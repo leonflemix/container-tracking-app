@@ -3,7 +3,7 @@
 
 import { doc, getDoc, collection, onSnapshot, getDocs, writeBatch, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { auth, db } from './firebase.js';
-import { renderContainersTable, uiElements, openDetailsModal, populateDetailsModal, closeDetailsModal } from './ui.js';
+import { renderContainersTable, uiElements, openDetailsModal, populateDetailsModal, closeDetailsModal, closeNewContainerModal } from './ui.js';
 
 let containersUnsubscribe = null;
 let currentContainerId = null; // To keep track of which container is open in the details modal
@@ -20,7 +20,7 @@ export function listenForContainers() {
         renderContainersTable(containers, handleViewContainer);
     }, (error) => {
         console.error("Error listening for containers:", error);
-        renderContainersTable(null, handleViewContainer); // Indicate an error state
+        renderContainersTable(null, handleViewContainer);
     });
 }
 
@@ -111,7 +111,7 @@ export async function handleNewContainerSubmit(e) {
         batch.set(containerRef, {
             bookingNumber: bookingNumberString,
             currentStatus: "In Yard",
-            currentLocation: "Yard - Section A",
+            currentLocation: "Yard",
             lastUpdatedAt: serverTimestamp()
         });
 
@@ -120,7 +120,7 @@ export async function handleNewContainerSubmit(e) {
             status: "Collected from Pier",
             timestamp: serverTimestamp(),
             userId: currentUser.uid,
-            details: { truckId, chassisId, newLocation: "Yard - Section A" }
+            details: { truckId, chassisId, newLocation: "Yard" }
         });
 
         await batch.commit();
@@ -138,10 +138,36 @@ export async function handleUpdateStatusSubmit(e) {
     if (!currentContainerId) return;
 
     const newStatus = uiElements.updateStatusForm.newStatus.value;
-    const newLocation = uiElements.updateStatusForm.newLocation.value.trim();
+    let newLocation = '';
+
+    // Determine location based on status and UI state
+    if (uiElements.locationFormGroup.style.display === 'none') {
+        switch (newStatus) {
+            case 'In Yard':
+                newLocation = 'Yard';
+                break;
+            case 'Sent to Workshop':
+                newLocation = 'Workshop';
+                break;
+            case 'Squish':
+                newLocation = 'Squish';
+                break;
+            case 'Ready':
+                newLocation = 'Yard - Ready';
+                break;
+            case 'Returned to Pier':
+                newLocation = 'Pier';
+                break;
+        }
+    } else {
+        const locationInput = document.getElementById('newLocation');
+        if (locationInput) {
+            newLocation = locationInput.value.trim();
+        }
+    }
 
     if (!newStatus || !newLocation) {
-        uiElements.updateFormError.textContent = 'Please fill out all fields.';
+        uiElements.updateFormError.textContent = 'Please complete all required fields.';
         uiElements.updateFormError.style.display = 'block';
         return;
     }
@@ -156,7 +182,6 @@ export async function handleUpdateStatusSubmit(e) {
     try {
         const batch = writeBatch(db);
 
-        // 1. Update the main container document
         const containerRef = doc(db, 'containers', currentContainerId);
         batch.update(containerRef, {
             currentStatus: newStatus,
@@ -164,7 +189,6 @@ export async function handleUpdateStatusSubmit(e) {
             lastUpdatedAt: serverTimestamp()
         });
         
-        // 2. Add a new event to the history
         const eventRef = doc(collection(db, 'containers', currentContainerId, 'events'));
         batch.set(eventRef, {
             status: newStatus,
@@ -178,7 +202,7 @@ export async function handleUpdateStatusSubmit(e) {
 
     } catch (error) {
         console.error("Error updating container status:", error);
-        uiElements.updateFormError.textContent = 'Failed to update status.';
+        uiElements.updateFormError.textContent = 'Failed to update status. Please try again.';
         uiElements.updateFormError.style.display = 'block';
     }
 }

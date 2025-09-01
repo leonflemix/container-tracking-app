@@ -194,7 +194,7 @@
 
                     <!-- Footer -->
                     <div class="footer">
-                        <p>© 2023 ContainerTrack Pro | Version 2.1.0</p>
+                        <p>© 2025 ContainerTrack Pro | Version 3.0.0</p>
                     </div>
                 </div>
             </div>
@@ -265,12 +265,16 @@
                                     <option value="Placed in Tilter">Placed in Tilter</option>
                                     <option value="Loading Complete">Loading Complete</option>
                                     <option value="Sent to Workshop">Sent to Workshop</option>
+                                    <option value="Squish">Squish</option>
+                                    <option value="Ready">Ready</option>
                                     <option value="Returned to Pier">Returned to Pier</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label for="newLocation">New Location</label>
-                                <input type="text" id="newLocation" placeholder="e.g., Tilter 3" required>
+                            <div class="form-group" id="locationFormGroup">
+                                <label for="newLocation" id="newLocationLabel">New Location</label>
+                                 <div id="locationInputContainer">
+                                    <!-- Dynamic input will be injected here by JavaScript -->
+                                </div>
                             </div>
                              <p class="form-error" id="updateFormError"></p>
                             <button type="submit" class="action-btn btn-primary">Add Event</button>
