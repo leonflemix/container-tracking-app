@@ -63,7 +63,7 @@ export function getStatusClass(status, location) {
         if (location && (location.toLowerCase() === 'track' || location.toLowerCase() === 'scale')) return 'status-tilter-yellow';
     }
     
-    if (['⚖️', '🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗'].includes(status)) return 'status-action-required';
+    if (['⚖️', '🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗', '👍🏻'].some(s => status.includes(s))) return 'status-action-required';
     if (lowerStatus.includes('yard')) return 'status-in-transit';
     if (lowerStatus.includes('pier')) return 'status-delivered';
     if (lowerStatus.includes('ready')) return 'status-success';
@@ -196,26 +196,29 @@ function renderUpdateForm(container) {
                 <button type="submit" class="action-btn btn-primary">Save Weight & Details</button>
             </form>
         `;
-        populateDropdowns('trucks');
-        populateDropdowns('chassis');
-    } else if (status === '⚖️ Needs Weighing') {
+    } else if (status === 'Post-Weighing') {
          formHTML = `
-            <h3>Assign Post-Weighing Status</h3>
+            <h3>Assign Follow-up Actions</h3>
             <form id="updateStatusForm" data-action="assignNextAction">
                  <div class="form-group">
-                    <label for="nextAction">Next Action</label>
-                    <select id="nextAction" required>
+                    <label for="nextActions">Required Actions (select one or more)</label>
+                    <select id="nextActions" multiple required style="height: 100px;">
                         <option value="🤛🏻💨">Needs Squishing</option>
                         <option value="👨🏻‍🏭">Needs Repairs</option>
                         <option value="🛞">Chassis Tire Repairs</option>
-                        <option value="🏗">Storage (IH Mathers)</option>
-                        <option value="👍🏻">Ready for Pier</option>
                     </select>
+                     <small>Hold Ctrl/Cmd to select multiple.</small>
                 </div>
-                <button type="submit" class="action-btn btn-primary">Assign Action</button>
+                <button type="submit" class="action-btn btn-primary" data-action="assignNextAction">Assign Actions</button>
+                 <hr>
+                 <div class="form-group">
+                    <label>Or, assign final disposition:</label>
+                    <button type="submit" class="action-btn btn-secondary" data-action="moveToMathers">Move to IH Mathers</button>
+                    <button type="submit" class="action-btn btn-success" data-action="markAsReady">Mark as Ready for Pier</button>
+                </div>
             </form>
         `;
-    } else if (['🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗', '👍🏻'].includes(status)) {
+    } else if (['🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗', '👍🏻'].some(s => status.includes(s))) {
          formHTML = `
             <h3>Mark as Returned to Pier</h3>
             <form id="updateStatusForm" data-action="returnToPier">
@@ -234,6 +237,12 @@ function renderUpdateForm(container) {
     }
 
     containerDiv.innerHTML = formHTML;
+
+    // IMPORTANT: Populate dropdowns AFTER the form is in the DOM
+    if (status === 'Loading Complete') {
+        populateDropdowns('trucks');
+        populateDropdowns('chassis');
+    }
 }
 
 export function toggleMobileSidebar() { uiElements.sidebar.classList.toggle('active'); uiElements.sidebarBackdrop.classList.toggle('active'); }

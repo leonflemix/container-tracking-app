@@ -21,18 +21,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Container Details Modal Listeners
     uiElements.closeDetailsModalBtn.addEventListener('click', closeDetailsModal);
     
-    // Event delegation for dynamic forms and buttons inside the modal
-    uiElements.containerDetailsModal.addEventListener('submit', (e) => {
-        if (e.target.id === 'updateStatusForm') {
-            handleUpdateStatusSubmit(e);
-        }
-    });
-
+    // Use event delegation for the dynamic form submissions and buttons
     uiElements.containerDetailsModal.addEventListener('click', (e) => {
-        const targetButton = e.target.closest('.delete-event-btn');
-        if (targetButton) {
-            const { containerId, eventId, previousEvent } = targetButton.dataset;
-            // A custom confirmation modal would be better than window.confirm in a real app
+        const submitButton = e.target.closest('button[type="submit"]');
+        if (submitButton) {
+            const form = submitButton.closest('form');
+            if (form && form.id === 'updateStatusForm') {
+                e.preventDefault(); // Prevent default form submission
+                handleUpdateStatusSubmit(e); // Pass the click event
+            }
+        }
+
+        const revertButton = e.target.closest('.delete-event-btn');
+        if (revertButton) {
+            const { containerId, eventId, previousEvent } = revertButton.dataset;
             if (confirm('Are you sure you want to revert this last event? This cannot be undone.')) {
                 handleDeleteLastEvent(containerId, eventId, JSON.parse(previousEvent));
             }

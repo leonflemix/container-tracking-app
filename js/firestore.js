@@ -1,228 +1,44 @@
-// js/firestore.js
-import { doc, getDoc, collection, onSnapshot, getDocs, writeBatch, serverTimestamp, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { auth, db } from './firebase.js';
-import { renderContainersTable, uiElements, openDetailsModal, populateDetailsModal, closeDetailsModal, closeNewContainerModal } from './ui.js';
+// js/main.js
+import { monitorAuthState, handleLogin, handleLogout } from './auth.js';
+import { uiElements, toggleMobileSidebar, openNewContainerModal, closeNewContainerModal, closeDetailsModal } from './ui.js';
+import { handleNewContainerSubmit, handleUpdateStatusSubmit, handleDeleteLastEvent } from './firestore.js';
 
-let containersUnsubscribe = null;
-let currentContainerId = null; 
+document.addEventListener('DOMContentLoaded', () => {
+    monitorAuthState();
 
-export function listenForContainers() {
-    const containersRef = collection(db, 'containers');
-    const q = query(containersRef, orderBy('lastUpdatedAt', 'desc'));
-    containersUnsubscribe = onSnapshot(q, (snapshot) => {
-        if (snapshot.empty) {
-            renderContainersTable([], handleViewContainer);
-            return;
+    // Attach all event listeners
+    uiElements.loginForm.addEventListener('submit', handleLogin);
+    uiElements.logoutButton.addEventListener('click', handleLogout);
+    uiElements.toggleSidebar.addEventListener('click', toggleMobileSidebar);
+    uiElements.sidebarBackdrop.addEventListener('click', toggleMobileSidebar);
+    
+    // New Container Modal Listeners
+    uiElements.newContainerBtn.addEventListener('click', openNewContainerModal);
+    uiElements.closeNewContainerModalBtn.addEventListener('click', closeNewContainerModal);
+    uiElements.cancelNewContainerModalBtn.addEventListener('click', closeNewContainerModal);
+    uiElements.newContainerForm.addEventListener('submit', handleNewContainerSubmit);
+
+    // Container Details Modal Listeners
+    uiElements.closeDetailsModalBtn.addEventListener('click', closeDetailsModal);
+    
+    // Use event delegation for the dynamic form submissions and buttons
+    uiElements.containerDetailsModal.addEventListener('click', (e) => {
+        const submitButton = e.target.closest('button[type="submit"]');
+        if (submitButton) {
+            const form = submitButton.closest('form');
+            if (form && form.id === 'updateStatusForm') {
+                e.preventDefault(); // Prevent default form submission
+                handleUpdateStatusSubmit(e); // Pass the click event
+            }
         }
-        const containers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderContainersTable(containers, handleViewContainer);
-    }, (error) => {
-        console.error("Error listening for containers:", error);
-        renderContainersTable([], handleViewContainer);
+
+        const revertButton = e.target.closest('.delete-event-btn');
+        if (revertButton) {
+            const { containerId, eventId, previousEvent } = revertButton.dataset;
+            if (confirm('Are you sure you want to revert this last event? This cannot be undone.')) {
+                handleDeleteLastEvent(containerId, eventId, JSON.parse(previousEvent));
+            }
+        }
     });
-}
-
-export async function handleNewContainerSubmit(e) {
-    e.preventDefault();
-    const containerNumber = uiElements.newContainerForm.containerNumber.value.trim().toUpperCase();
-    const bookingId = uiElements.newContainerForm.bookingNumber.value;
-    const truckId = uiElements.newContainerForm.truck.value;
-    const chassisId = uiElements.newContainerForm.chassis.value;
-
-    if (!containerNumber || !bookingId || !truckId || !chassisId) {
-        uiElements.formError.textContent = 'Please fill out all fields.';
-        uiElements.formError.style.display = 'block';
-        return;
-    }
-    
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-         uiElements.formError.textContent = 'You must be logged in to perform this action.';
-         uiElements.formError.style.display = 'block';
-         return;
-    }
-
-    try {
-        const bookingDoc = await getDoc(doc(db, 'bookings', bookingId));
-        const bookingNumberString = bookingDoc.exists() ? bookingDoc.data().bookingNumber : 'Unknown';
-
-        const batch = writeBatch(db);
-        
-        const containerRef = doc(db, 'containers', containerNumber);
-        batch.set(containerRef, {
-            bookingNumber: bookingNumberString,
-            currentStatus: "In Yard",
-            currentLocation: "Yard",
-            lastUpdatedAt: serverTimestamp(),
-            collectedAt: serverTimestamp()
-        });
-
-        const eventRef = doc(collection(db, 'containers', containerNumber, 'events'));
-        batch.set(eventRef, {
-            status: "Collected from Pier",
-            timestamp: serverTimestamp(),
-            userId: currentUser.uid,
-            details: { truckId, chassisId, newLocation: "Yard" }
-        });
-
-        await batch.commit();
-        closeNewContainerModal();
-
-    } catch (error) {
-        console.error("Error saving new container:", error);
-        uiElements.formError.textContent = 'Failed to save container. Please try again.';
-        uiElements.formError.style.display = 'block';
-    }
-}
-
-export async function handleUpdateStatusSubmit(e) {
-    e.preventDefault();
-    if (!currentContainerId) return;
-
-    const form = e.target;
-    const action = form.dataset.action;
-    const currentUser = auth.currentUser;
-    if (!currentUser) return;
-
-    let newStatus = '';
-    let newLocation = '';
-    let details = {};
-
-    switch (action) {
-        case 'placeInTilter':
-            newLocation = form.tilterLocation.value;
-            newStatus = 'Placed in Tilter';
-            details = { newLocation };
-            break;
-        case 'loadingComplete':
-            newLocation = form.tilterLocation.value;
-            newStatus = 'Loading Complete';
-            details = { newLocation };
-            break;
-        case 'weighContainer':
-            newStatus = '⚖️ Needs Weighing';
-            newLocation = 'Yard';
-            details = {
-                newLocation,
-                weighAmount: form.weighAmount.value,
-                sealNumber: form.sealNumber.value,
-                truckId: form.truck.value,
-                chassisId: form.chassis.value,
-            };
-            break;
-         case 'assignNextAction':
-            newStatus = form.nextAction.value;
-            if (newStatus === '👨🏻‍🏭') newLocation = 'Workshop';
-            else if (newStatus === '🏗') newLocation = 'IH Mathers';
-            else if (newStatus === '👍🏻') newLocation = 'Yard - Ready';
-            else newLocation = 'Yard';
-            details = { newLocation };
-            break;
-        case 'returnToPier':
-            newStatus = 'Returned to Pier';
-            newLocation = 'Pier';
-            details = { newLocation };
-            break;
-        case 'reactivate':
-            newStatus = '🤛🏻💨';
-            newLocation = 'Yard';
-            details = { newLocation, reactivatedBy: currentUser.uid };
-            break;
-        default: return;
-    }
-
-    try {
-        const batch = writeBatch(db);
-        const containerRef = doc(db, 'containers', currentContainerId);
-        batch.update(containerRef, {
-            currentStatus: newStatus,
-            currentLocation: newLocation,
-            lastUpdatedAt: serverTimestamp()
-        });
-        
-        const eventRef = doc(collection(db, 'containers', currentContainerId, 'events'));
-        batch.set(eventRef, {
-            status: newStatus,
-            timestamp: serverTimestamp(),
-            userId: currentUser.uid,
-            details: details
-        });
-
-        await batch.commit();
-        closeDetailsModal();
-
-    } catch (error) {
-        console.error("Error updating container status:", error);
-    }
-}
-
-export async function handleDeleteLastEvent(containerId, eventId, previousEventData) {
-    if (document.body.dataset.userRole !== 'admin') {
-        console.error("Permission denied: Only admins can delete events.");
-        return;
-    }
-    
-    try {
-        const batch = writeBatch(db);
-        const eventToDeleteRef = doc(db, 'containers', containerId, 'events', eventId);
-        batch.delete(eventToDeleteRef);
-
-        const containerRef = doc(db, 'containers', containerId);
-        if (previousEventData) {
-            batch.update(containerRef, {
-                currentStatus: previousEventData.status,
-                currentLocation: previousEventData.details.newLocation,
-                lastUpdatedAt: serverTimestamp()
-            });
-        } else {
-            batch.update(containerRef, {
-                currentStatus: "In Yard",
-                currentLocation: "Yard",
-                lastUpdatedAt: serverTimestamp()
-            });
-        }
-
-        await batch.commit();
-        closeDetailsModal();
-
-    } catch (error) {
-        console.error("Error reverting event:", error);
-    }
-}
-
-export function stopListeningForContainers() { if (containersUnsubscribe) { containersUnsubscribe(); containersUnsubscribe = null; } }
-async function handleViewContainer(containerId) {
-    currentContainerId = containerId;
-    try {
-        const containerDocRef = doc(db, 'containers', containerId);
-        const containerDocSnap = await getDoc(containerDocRef);
-        if (!containerDocSnap.exists()) { console.error("Container not found!"); return; }
-        const eventsRef = collection(db, 'containers', containerId, 'events');
-        const q = query(eventsRef, orderBy('timestamp', 'desc'));
-        const eventsSnapshot = await getDocs(q);
-        const events = eventsSnapshot.docs;
-        populateDetailsModal(containerDocSnap, events);
-        openDetailsModal();
-    } catch (error) { console.error("Error fetching container details:", error); }
-}
-export async function populateDropdowns(target = 'all') {
-    if (target === 'all' || target === 'bookings') await populateSelectWithOptions('bookings', 'bookingNumber', 'bookingNumber');
-    if (target === 'all' || target === 'trucks') await populateSelectWithOptions('trucks', 'truck', 'truckName');
-    if (target === 'all' || target === 'chassis') await populateSelectWithOptions('chassis', 'chassis', 'chassisName');
-}
-async function populateSelectWithOptions(collectionName, selectId, textField) {
-    const selectElement = document.getElementById(selectId);
-    if (!selectElement) return;
-    try {
-        const querySnapshot = await getDocs(collection(db, collectionName));
-        selectElement.innerHTML = `<option value="">-- Select ${selectId} --</option>`;
-        querySnapshot.forEach(doc => {
-            const data = doc.data();
-            const option = document.createElement('option');
-            option.value = doc.id;
-            option.textContent = data[textField];
-            selectElement.appendChild(option);
-        });
-    } catch (error) { console.error(`Error populating ${collectionName}:`, error); }
-}
+});
 
