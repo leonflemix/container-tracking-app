@@ -57,10 +57,10 @@ async function handleViewContainer(containerId) {
 
 
 // --- Firestore Write Functions ---
-export async function populateDropdowns() {
-    await populateSelectWithOptions('bookings', 'bookingNumber', 'bookingNumber');
-    await populateSelectWithOptions('trucks', 'truck', 'truckName');
-    await populateSelectWithOptions('chassis', 'chassis', 'chassisName');
+export async function populateDropdowns(target = 'all') {
+    if (target === 'all' || target === 'bookings') await populateSelectWithOptions('bookings', 'bookingNumber', 'bookingNumber');
+    if (target === 'all' || target === 'trucks') await populateSelectWithOptions('trucks', 'truck', 'truckName');
+    if (target === 'all' || target === 'chassis') await populateSelectWithOptions('chassis', 'chassis', 'chassisName');
 }
 
 async function populateSelectWithOptions(collectionName, selectId, textField) {
@@ -137,51 +137,66 @@ export async function handleUpdateStatusSubmit(e) {
     e.preventDefault();
     if (!currentContainerId) return;
 
-    const newStatus = uiElements.updateStatusForm.newStatus.value;
-    let newLocation = '';
-
-    // Determine location based on status and UI state
-    if (uiElements.locationFormGroup.style.display === 'none') {
-        switch (newStatus) {
-            case 'In Yard':
-                newLocation = 'Yard';
-                break;
-            case 'Sent to Workshop':
-                newLocation = 'Workshop';
-                break;
-            case 'Squish':
-                newLocation = 'Squish';
-                break;
-            case 'Ready':
-                newLocation = 'Yard - Ready';
-                break;
-            case 'Returned to Pier':
-                newLocation = 'Pier';
-                break;
-        }
-    } else {
-        const locationInput = document.getElementById('newLocation');
-        if (locationInput) {
-            newLocation = locationInput.value.trim();
-        }
-    }
-
-    if (!newStatus || !newLocation) {
-        uiElements.updateFormError.textContent = 'Please complete all required fields.';
-        uiElements.updateFormError.style.display = 'block';
+    const form = e.target;
+    const action = form.dataset.action;
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+        console.error("User not logged in");
         return;
     }
 
-    const currentUser = auth.currentUser;
-     if (!currentUser) {
-         uiElements.updateFormError.textContent = 'You must be logged in.';
-         uiElements.updateFormError.style.display = 'block';
-         return;
+    let newStatus = '';
+    let newLocation = '';
+    let details = {};
+
+    // Determine the update based on the form's action
+    switch (action) {
+        case 'placeInTilter':
+            newLocation = form.tilterLocation.value;
+            newStatus = 'Placed in Tilter';
+            details = { newLocation };
+            break;
+        case 'loadingComplete':
+            newLocation = form.tilterLocation.value;
+            newStatus = 'Loading Complete';
+            details = { newLocation };
+            break;
+        case 'weighContainer':
+            newStatus = '⚖️ Needs Weighing';
+            newLocation = 'Yard'; // Back in the yard after weighing
+            details = {
+                newLocation,
+                weighAmount: form.weighAmount.value,
+                truckId: form.truck.value,
+                chassisId: form.chassis.value,
+            };
+            break;
+         case 'assignNextAction':
+            newStatus = form.nextAction.value;
+            // Location depends on the action
+            if (newStatus === '👨🏻‍🏭') newLocation = 'Workshop';
+            else if (newStatus === '🏗') newLocation = 'IH Mathers';
+            else if (newStatus === '👍🏻') newLocation = 'Yard - Ready';
+            else newLocation = 'Yard'; // Default for Squish, Tire repairs
+            details = { newLocation };
+            break;
+        case 'returnToPier':
+            newStatus = 'Returned to Pier';
+            newLocation = 'Pier';
+            details = { newLocation };
+            break;
+        case 'reactivate':
+            newStatus = '🤛🏻💨'; // Needs Squishing
+            newLocation = 'Yard';
+            details = { newLocation, reactivatedBy: currentUser.uid };
+            break;
+        default:
+            console.error('Unknown update action:', action);
+            return;
     }
 
     try {
         const batch = writeBatch(db);
-
         const containerRef = doc(db, 'containers', currentContainerId);
         batch.update(containerRef, {
             currentStatus: newStatus,
@@ -194,7 +209,7 @@ export async function handleUpdateStatusSubmit(e) {
             status: newStatus,
             timestamp: serverTimestamp(),
             userId: currentUser.uid,
-            details: { newLocation }
+            details: details
         });
 
         await batch.commit();
@@ -202,8 +217,6 @@ export async function handleUpdateStatusSubmit(e) {
 
     } catch (error) {
         console.error("Error updating container status:", error);
-        uiElements.updateFormError.textContent = 'Failed to update status. Please try again.';
-        uiElements.updateFormError.style.display = 'block';
     }
 }
 

@@ -1,13 +1,9 @@
 // js/main.js
-// This is the main entry point for the application.
-// It imports functions from other modules and sets up event listeners.
-
 import { monitorAuthState, handleLogin, handleLogout } from './auth.js';
-import { uiElements, toggleMobileSidebar, openNewContainerModal, closeNewContainerModal, closeDetailsModal, handleStatusChange } from './ui.js';
+import { uiElements, toggleMobileSidebar, openNewContainerModal, closeNewContainerModal, closeDetailsModal } from './ui.js';
 import { handleNewContainerSubmit, handleUpdateStatusSubmit } from './firestore.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Start listening for authentication changes
     monitorAuthState();
 
     // Attach all event listeners
@@ -24,7 +20,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Container Details Modal Listeners
     uiElements.closeDetailsModalBtn.addEventListener('click', closeDetailsModal);
-    uiElements.updateStatusForm.addEventListener('submit', handleUpdateStatusSubmit);
-    uiElements.newStatus.addEventListener('change', handleStatusChange);
+    
+    // Use event delegation for the dynamic form
+    uiElements.containerDetailsModal.addEventListener('submit', (e) => {
+        if (e.target.id === 'updateStatusForm') {
+            handleUpdateStatusSubmit(e);
+        }
+    });
 });
-

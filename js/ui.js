@@ -38,6 +38,7 @@ export const uiElements = {
     newStatus: document.getElementById('newStatus'),
     locationFormGroup: document.getElementById('locationFormGroup'),
     locationInputContainer: document.getElementById('locationInputContainer'),
+    updateStatusContainer: document.getElementById('updateStatusContainer'),
 };
 
 // --- UI Functions ---
@@ -85,7 +86,7 @@ export function renderContainersTable(containers, onViewClick) {
         return;
     }
     containers.forEach(container => {
-        const statusClass = getStatusClass(container.currentStatus);
+        const statusClass = getStatusClass(container.currentStatus, container.currentLocation);
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${container.id}</td>
@@ -104,14 +105,20 @@ export function renderContainersTable(containers, onViewClick) {
 }
 
 
-function getStatusClass(status) {
+export function getStatusClass(status, location) {
     if (!status) return 'status-pending';
     const lowerStatus = status.toLowerCase();
-    if (lowerStatus.includes('transit') || lowerStatus.includes('yard')) return 'status-in-transit';
-    if (lowerStatus.includes('delivered') || lowerStatus.includes('pier')) return 'status-delivered';
-    if (lowerStatus.includes('alert') || lowerStatus.includes('hold')) return 'status-alert';
-    if (lowerStatus.includes('tilter')) return 'status-warning';
-    if (lowerStatus.includes('workshop') || lowerStatus.includes('squish')) return 'status-danger';
+    
+    if (lowerStatus.includes('tilter') || lowerStatus.includes('loading complete')) {
+        if (location && location.toLowerCase() === 'shred') return 'status-tilter-blue';
+        if (location && (location.toLowerCase() === 'track' || location.toLowerCase() === 'scale')) return 'status-tilter-yellow';
+    }
+    
+    if (['⚖️', '🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗'].includes(status)) return 'status-action-required';
+    if (lowerStatus.includes('yard')) return 'status-in-transit';
+    if (lowerStatus.includes('pier')) return 'status-delivered';
+    if (lowerStatus.includes('ready')) return 'status-success';
+
     return 'status-pending';
 }
 
@@ -145,42 +152,114 @@ export function populateDetailsModal(containerDoc, events) {
     
     uiElements.detailsModalTitle.textContent = `Container: ${containerDoc.id}`;
     
+    const data = currentContainerForModal;
     uiElements.currentContainerInfo.innerHTML = `
-        <p><strong>Booking #:</strong> ${containerDoc.data().bookingNumber}</p>
-        <p><strong>Current Status:</strong> <span class="status ${getStatusClass(containerDoc.data().currentStatus)}">${containerDoc.data().currentStatus}</span></p>
-        <p><strong>Current Location:</strong> ${containerDoc.data().currentLocation}</p>
+        <p><strong>Booking #:</strong> ${data.bookingNumber}</p>
+        <p><strong>Current Status:</strong> <span class="status ${getStatusClass(data.currentStatus, data.currentLocation)}">${data.currentStatus}</span></p>
+        <p><strong>Current Location:</strong> ${data.currentLocation}</p>
     `;
 
-    uiElements.eventHistoryList.innerHTML = '';
-    if (events.length === 0) {
-        uiElements.eventHistoryList.innerHTML = '<p>No history found.</p>';
-        return;
-    }
-
-    events.forEach(event => {
-        const eventData = event.data();
-        const timestamp = eventData.timestamp ? eventData.timestamp.toDate().toLocaleString('en-CA') : 'No date';
-        const eventEl = document.createElement('div');
-        eventEl.className = 'event-item';
-        eventEl.innerHTML = `
-            <div class="event-header">
-                <span>${eventData.status}</span>
-                <span class="event-time">${timestamp}</span>
-            </div>
-            <div class="event-details">
-                <p>User: ${eventData.userId ? eventData.userId.substring(0,8) : 'N/A'}... | Location: ${eventData.details.newLocation || 'N/A'}</p>
-            </div>
-        `;
-        uiElements.eventHistoryList.appendChild(eventEl);
-    });
-
-    // Set initial state for the update form
-    uiElements.updateStatusForm.reset();
-    uiElements.updateFormError.style.display = 'none';
-    uiElements.newStatus.value = containerDoc.data().currentStatus || 'In Yard';
-    handleStatusChange(); // Trigger the logic to show the correct location input
+    renderEventHistory(events, data.currentLocation);
+    renderUpdateForm(data); // New function to render the dynamic form
+}
+function renderEventHistory(events, currentLocation) {
+    // ... existing event history rendering logic ...
 }
 
+function renderUpdateForm(container) {
+    const containerDiv = uiElements.updateStatusContainer;
+    containerDiv.innerHTML = ''; // Clear previous form
+    let formHTML = '';
+    const status = container.currentStatus;
+
+    if (status === 'In Yard') {
+        formHTML = `
+            <h3>Place in Tilter</h3>
+            <form id="updateStatusForm" data-action="placeInTilter">
+                <div class="form-group">
+                    <label for="tilterLocation">Tilter Location</label>
+                    <select id="tilterLocation" required>
+                        <option value="SHRED">SHRED</option>
+                        <option value="SCALE">SCALE</option>
+                        <option value="TRACK">TRACK</option>
+                    </select>
+                </div>
+                <button type="submit" class="action-btn btn-primary">Update Status</button>
+            </form>
+        `;
+    } else if (status === 'Placed in Tilter') {
+         formHTML = `
+            <h3>Mark as Loading Complete</h3>
+            <form id="updateStatusForm" data-action="loadingComplete">
+                 <div class="form-group">
+                    <label for="tilterLocation">Confirm Location</label>
+                    <select id="tilterLocation" required>
+                        <option value="SHRED" ${container.currentLocation === 'SHRED' ? 'selected' : ''}>SHRED</option>
+                        <option value="SCALE" ${container.currentLocation === 'SCALE' ? 'selected' : ''}>SCALE</option>
+                        <option value="TRACK" ${container.currentLocation === 'TRACK' ? 'selected' : ''}>TRACK</option>
+                    </select>
+                </div>
+                <button type="submit" class="action-btn btn-primary">Mark as Complete</button>
+            </form>
+        `;
+    } else if (status === 'Loading Complete') {
+        formHTML = `
+            <h3>Weigh Container</h3>
+            <form id="updateStatusForm" data-action="weighContainer">
+                <div class="form-group">
+                    <label for="weighAmount">Weight</label>
+                    <input type="number" id="weighAmount" placeholder="e.g., 42000" required>
+                </div>
+                <div class="form-group">
+                    <label for="truck">Truck</label>
+                    <select id="truck" required><option>Loading...</option></select>
+                </div>
+                <div class="form-group">
+                    <label for="chassis">Chassis</label>
+                    <select id="chassis" required><option>Loading...</option></select>
+                </div>
+                <button type="submit" class="action-btn btn-primary">Save Weight</button>
+            </form>
+        `;
+        populateDropdowns('truck');
+        populateDropdowns('chassis');
+    } else if (status === '⚖️ Needs Weighing') {
+         formHTML = `
+            <h3>Assign Post-Weighing Status</h3>
+            <form id="updateStatusForm" data-action="assignNextAction">
+                 <div class="form-group">
+                    <label for="nextAction">Next Action</label>
+                    <select id="nextAction" required>
+                        <option value="🤛🏻💨">Needs Squishing</option>
+                        <option value="👨🏻‍🏭">Needs Repairs</option>
+                        <option value="🛞">Chassis Tire Repairs</option>
+                        <option value="🏗">Storage (IH Mathers)</option>
+                        <option value="👍🏻">Ready for Pier</option>
+                    </select>
+                </div>
+                <button type="submit" class="action-btn btn-primary">Assign Action</button>
+            </form>
+        `;
+    } else if (['🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗', '👍🏻'].includes(status)) {
+         formHTML = `
+            <h3>Mark as Returned to Pier</h3>
+            <form id="updateStatusForm" data-action="returnToPier">
+                <p>This will mark the container as complete.</p>
+                <button type="submit" class="action-btn btn-primary">Return to Pier</button>
+            </form>
+        `;
+    } else if (status === 'Returned to Pier' && document.body.dataset.userRole === 'admin') {
+         formHTML = `
+            <h3>Re-activate Rejected Container</h3>
+            <form id="updateStatusForm" data-action="reactivate">
+                <p class="form-error" style="display:block;">Admin Only: This container was rejected. Re-activate to mark it for squishing.</p>
+                <button type="submit" class="action-btn btn-danger">Re-activate</button>
+            </form>
+        `;
+    }
+
+    containerDiv.innerHTML = formHTML;
+}
 export function handleStatusChange() {
     const selectedStatus = uiElements.newStatus.value;
     const locationFormGroup = uiElements.locationFormGroup;

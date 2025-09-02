@@ -7,6 +7,10 @@
     --danger: #ef4444;
     --light: #f8fafc;
     --dark: #1e293b;
+    --pastel-yellow: #fef9c3;
+    --pastel-yellow-text: #ca8a04;
+    --pastel-blue: #dbeafe;
+    --pastel-blue-text: #2563eb;
     --sidebar-width: 250px;
     --header-height: 60px;
 }
@@ -400,6 +404,9 @@ tbody tr:hover {
 .status-in-transit { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
 .status-pending { background: rgba(100, 116, 139, 0.1); color: var(--secondary); }
 .status-alert { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+.status-tilter-yellow { background: var(--pastel-yellow); color: var(--pastel-yellow-text); }
+.status-tilter-blue { background: var(--pastel-blue); color: var(--pastel-blue-text); }
+.status-action-required { background: rgba(239, 68, 68, 0.1); color: var(--danger); font-size: 1.2rem; padding: 0.2rem 0.5rem;}
 
 /* Action Buttons */
 .action-btn {
