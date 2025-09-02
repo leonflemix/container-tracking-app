@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Handle revert button clicks
         const revertButton = e.target.closest('.delete-event-btn');
         if (revertButton) {
-            const { containerId, eventId, previousEvent } from revertButton.dataset;
+            const { containerId, eventId, previousEvent } = revertButton.dataset;
             if (confirm('Are you sure you want to revert this last event? This cannot be undone.')) {
                 handleDeleteLastEvent(containerId, eventId, JSON.parse(previousEvent));
             }
