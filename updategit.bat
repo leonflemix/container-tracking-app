@@ -1,19 +1,14 @@
 @echo off
-setlocal
 
-:: Get a reliable, locale-independent timestamp
-FOR /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') DO SET "dt=%%I"
-SET "timestamp=%dt:~0,4%-%dt:~4,2%-%dt:~6,2% %dt:~8,2%:%dt:~10,2%:%dt:~12,2%"
-
-:: 1. Add all changes
+:: 1. Add all changes to the staging area
 echo Staging all files...
 git add .
 
-:: 2. Commit with the clean timestamp
-echo Committing with message: "Update: %timestamp%"
-git commit -m "Update: %timestamp%"
+:: 2. Create a timestamp and commit the changes
+echo Committing with a timestamp...
+git commit -m "Auto-commit on %date% at %time%"
 
-:: 3. Push the changes
+:: 3. Push the changes to the remote repository
 echo Pushing to remote...
 git push
 
