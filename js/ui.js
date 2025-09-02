@@ -1,11 +1,9 @@
 // js/ui.js
-// Manages all interactions with the user interface (DOM manipulation).
-
 import { populateDropdowns } from './firestore.js';
+import { getUserName } from './users.js';
 
-let currentContainerForModal = null; // Store data for the container currently in the details modal
+let currentContainerForModal = null;
 
-// --- UI Element References ---
 export const uiElements = {
     loginPage: document.getElementById('loginPage'),
     appContainer: document.getElementById('appContainer'),
@@ -20,14 +18,12 @@ export const uiElements = {
     sidebar: document.getElementById('sidebar'),
     sidebarBackdrop: document.getElementById('sidebarBackdrop'),
     containersTableBody: document.getElementById('containers-table-body'),
-    // New Container Modal
     newContainerModal: document.getElementById('newContainerModal'),
     newContainerBtn: document.getElementById('newContainerBtn'),
     closeNewContainerModalBtn: document.getElementById('closeNewContainerModalBtn'),
     cancelNewContainerModalBtn: document.getElementById('cancelNewContainerModalBtn'),
     newContainerForm: document.getElementById('newContainerForm'),
     formError: document.getElementById('formError'),
-    // Details Modal
     containerDetailsModal: document.getElementById('containerDetailsModal'),
     closeDetailsModalBtn: document.getElementById('closeDetailsModalBtn'),
     detailsModalTitle: document.getElementById('detailsModalTitle'),
@@ -36,43 +32,27 @@ export const uiElements = {
     updateStatusContainer: document.getElementById('updateStatusContainer'),
 };
 
-// --- UI Functions ---
-export function showApp() {
-    uiElements.loginPage.style.display = 'none';
-    uiElements.appContainer.style.display = 'block';
-}
-
-export function showLogin() {
-    uiElements.appContainer.style.display = 'none';
-    uiElements.loginPage.style.display = 'flex';
-}
-
+export function showApp() { uiElements.loginPage.style.display = 'none'; uiElements.appContainer.style.display = 'block'; }
+export function showLogin() { uiElements.appContainer.style.display = 'none'; uiElements.loginPage.style.display = 'flex'; }
 export function setUserRoleUI(role, email) {
     document.body.dataset.userRole = role;
-
     uiElements.adminElements.forEach(el => el.style.display = 'none');
     uiElements.managerElements.forEach(el => el.style.display = 'none');
-
     if (role === 'admin') {
-        uiElements.userAvatar.textContent = 'A';
-        uiElements.userAvatar.style.background = '#ef4444';
-        uiElements.userName.textContent = email;
-        uiElements.userRole.textContent = 'Admin';
+        uiElements.userAvatar.textContent = 'A'; uiElements.userAvatar.style.background = '#ef4444';
+        uiElements.userName.textContent = email; uiElements.userRole.textContent = 'Admin';
         uiElements.adminElements.forEach(el => { el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid'; });
         uiElements.managerElements.forEach(el => { el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid'; });
     } else if (role === 'manager') {
-        uiElements.userAvatar.textContent = 'M';
-        uiElements.userAvatar.style.background = '#f59e0b';
-        uiElements.userName.textContent = email;
-        uiElements.userRole.textContent = 'Manager';
+        uiElements.userAvatar.textContent = 'M'; uiElements.userAvatar.style.background = '#f59e0b';
+        uiElements.userName.textContent = email; uiElements.userRole.textContent = 'Manager';
         uiElements.managerElements.forEach(el => { el.style.display = el.tagName === 'BUTTON' || el.classList.contains('menu-item') ? 'flex' : 'grid'; });
     } else {
-        uiElements.userAvatar.textContent = email.charAt(0).toUpperCase();
-        uiElements.userAvatar.style.background = '#64748b';
-        uiElements.userName.textContent = email;
-        uiElements.userRole.textContent = 'Viewer';
+        uiElements.userAvatar.textContent = email ? email.charAt(0).toUpperCase() : '?'; uiElements.userAvatar.style.background = '#64748b';
+        uiElements.userName.textContent = email; uiElements.userRole.textContent = 'Viewer';
     }
 }
+
 
 export function getStatusClass(status, location) {
     if (!status) return 'status-pending';
@@ -99,10 +79,11 @@ export function renderContainersTable(containers, onViewClick) {
     }
     containers.forEach(container => {
         const statusClass = getStatusClass(container.currentStatus, container.currentLocation);
+        const collectedDate = container.collectedAt ? container.collectedAt.toDate().toLocaleDateString('en-CA') : 'N/A';
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${container.id}</td>
-            <td>${container.bookingNumber || 'N/A'}</td>
+            <td>${collectedDate}</td>
             <td>${container.currentLocation || 'N/A'}</td>
             <td><span class="status ${statusClass}">${container.currentStatus}</span></td>
             <td>
@@ -116,47 +97,6 @@ export function renderContainersTable(containers, onViewClick) {
     });
 }
 
-export function toggleMobileSidebar() {
-    uiElements.sidebar.classList.toggle('active');
-    uiElements.sidebarBackdrop.classList.toggle('active');
-}
-
-export async function openNewContainerModal() {
-    uiElements.newContainerForm.reset();
-    uiElements.formError.style.display = 'none';
-    await populateDropdowns();
-    uiElements.newContainerModal.classList.remove('hidden');
-}
-
-export function closeNewContainerModal() {
-    uiElements.newContainerModal.classList.add('hidden');
-}
-
-// --- Details Modal UI Functions ---
-export function openDetailsModal() {
-    uiElements.containerDetailsModal.classList.remove('hidden');
-}
-
-export function closeDetailsModal() {
-    uiElements.containerDetailsModal.classList.add('hidden');
-}
-
-export function populateDetailsModal(containerDoc, events) {
-    currentContainerForModal = { id: containerDoc.id, ...containerDoc.data() };
-    
-    uiElements.detailsModalTitle.textContent = `Container: ${containerDoc.id}`;
-    
-    const data = currentContainerForModal;
-    uiElements.currentContainerInfo.innerHTML = `
-        <p><strong>Booking #:</strong> ${data.bookingNumber}</p>
-        <p><strong>Current Status:</strong> <span class="status ${getStatusClass(data.currentStatus, data.currentLocation)}">${data.currentStatus}</span></p>
-        <p><strong>Current Location:</strong> ${data.currentLocation}</p>
-    `;
-
-    renderEventHistory(events);
-    renderUpdateForm(data);
-}
-
 function renderEventHistory(events) {
     uiElements.eventHistoryList.innerHTML = '';
     if (events.length === 0) {
@@ -168,10 +108,10 @@ function renderEventHistory(events) {
         const eventData = event.data();
         const timestamp = eventData.timestamp ? eventData.timestamp.toDate().toLocaleString('en-CA') : 'No date';
         
-        let deleteButtonHTML = '';
-        if (index === 0 && document.body.dataset.userRole === 'admin') {
+        let revertButtonHTML = '';
+        if (index === 0 && events.length > 1 && document.body.dataset.userRole === 'admin') {
             const previousEvent = events[1] ? events[1].data() : null;
-            deleteButtonHTML = `<button class="action-btn btn-danger delete-event-btn" 
+            revertButtonHTML = `<button class="action-btn btn-danger delete-event-btn" 
                                     data-container-id="${currentContainerForModal.id}" 
                                     data-event-id="${event.id}"
                                     data-previous-event='${JSON.stringify(previousEvent)}'>
@@ -185,12 +125,12 @@ function renderEventHistory(events) {
             <div class="event-header">
                 <span>${eventData.status}</span>
                 <div class="event-actions">
-                    ${deleteButtonHTML}
+                    ${revertButtonHTML}
                     <span class="event-time">${timestamp}</span>
                 </div>
             </div>
             <div class="event-details">
-                <p>User: ${eventData.userId ? eventData.userId.substring(0,8) : 'N/A'}... | Location: ${eventData.details.newLocation || 'N/A'}</p>
+                <p>User: ${getUserName(eventData.userId)} | Location: ${eventData.details.newLocation || 'N/A'}</p>
             </div>
         `;
         uiElements.eventHistoryList.appendChild(eventEl);
@@ -199,7 +139,7 @@ function renderEventHistory(events) {
 
 function renderUpdateForm(container) {
     const containerDiv = uiElements.updateStatusContainer;
-    containerDiv.innerHTML = ''; // Clear previous form
+    containerDiv.innerHTML = '';
     let formHTML = '';
     const status = container.currentStatus;
 
@@ -219,7 +159,7 @@ function renderUpdateForm(container) {
             </form>
         `;
     } else if (status === 'Placed in Tilter') {
-         formHTML = `
+        formHTML = `
             <h3>Mark as Loading Complete</h3>
             <form id="updateStatusForm" data-action="loadingComplete">
                  <div class="form-group">
@@ -242,6 +182,10 @@ function renderUpdateForm(container) {
                     <input type="number" id="weighAmount" placeholder="e.g., 42000" required>
                 </div>
                 <div class="form-group">
+                    <label for="sealNumber">Seal Number</label>
+                    <input type="text" id="sealNumber" placeholder="e.g., C123456" required>
+                </div>
+                <div class="form-group">
                     <label for="truck">Truck</label>
                     <select id="truck" required><option>Loading...</option></select>
                 </div>
@@ -249,7 +193,7 @@ function renderUpdateForm(container) {
                     <label for="chassis">Chassis</label>
                     <select id="chassis" required><option>Loading...</option></select>
                 </div>
-                <button type="submit" class="action-btn btn-primary">Save Weight</button>
+                <button type="submit" class="action-btn btn-primary">Save Weight & Details</button>
             </form>
         `;
         populateDropdowns('trucks');
@@ -290,5 +234,19 @@ function renderUpdateForm(container) {
     }
 
     containerDiv.innerHTML = formHTML;
+}
+
+export function toggleMobileSidebar() { uiElements.sidebar.classList.toggle('active'); uiElements.sidebarBackdrop.classList.toggle('active'); }
+export async function openNewContainerModal() { uiElements.newContainerForm.reset(); uiElements.formError.style.display = 'none'; await populateDropdowns(); uiElements.newContainerModal.classList.remove('hidden'); }
+export function closeNewContainerModal() { uiElements.newContainerModal.classList.add('hidden'); }
+export function openDetailsModal() { uiElements.containerDetailsModal.classList.remove('hidden'); }
+export function closeDetailsModal() { uiElements.containerDetailsModal.classList.add('hidden'); }
+export function populateDetailsModal(containerDoc, events) {
+    currentContainerForModal = { id: containerDoc.id, ...containerDoc.data() };
+    uiElements.detailsModalTitle.textContent = `Container: ${containerDoc.id}`;
+    const data = currentContainerForModal;
+    uiElements.currentContainerInfo.innerHTML = `<p><strong>Booking #:</strong> ${data.bookingNumber}</p><p><strong>Current Status:</strong> <span class="status ${getStatusClass(data.currentStatus, data.currentLocation)}">${data.currentStatus}</span></p><p><strong>Current Location:</strong> ${data.currentLocation}</p>`;
+    renderEventHistory(events);
+    renderUpdateForm(data);
 }
 

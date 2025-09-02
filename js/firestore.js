@@ -1,6 +1,4 @@
 // js/firestore.js
-// Contains all logic for interacting with the Firestore database.
-
 import { doc, getDoc, collection, onSnapshot, getDocs, writeBatch, serverTimestamp, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { auth, db } from './firebase.js';
 import { renderContainersTable, uiElements, openDetailsModal, populateDetailsModal, closeDetailsModal, closeNewContainerModal } from './ui.js';
@@ -8,7 +6,6 @@ import { renderContainersTable, uiElements, openDetailsModal, populateDetailsMod
 let containersUnsubscribe = null;
 let currentContainerId = null; 
 
-// --- Firestore Read Functions ---
 export function listenForContainers() {
     const containersRef = collection(db, 'containers');
     const q = query(containersRef, orderBy('lastUpdatedAt', 'desc'));
@@ -21,66 +18,8 @@ export function listenForContainers() {
         renderContainersTable(containers, handleViewContainer);
     }, (error) => {
         console.error("Error listening for containers:", error);
-        renderContainersTable(null, handleViewContainer);
+        renderContainersTable([], handleViewContainer);
     });
-}
-
-export function stopListeningForContainers() {
-    if (containersUnsubscribe) {
-        containersUnsubscribe();
-        containersUnsubscribe = null;
-    }
-}
-
-async function handleViewContainer(containerId) {
-    currentContainerId = containerId;
-    try {
-        const containerDocRef = doc(db, 'containers', containerId);
-        const containerDocSnap = await getDoc(containerDocRef);
-
-        if (!containerDocSnap.exists()) {
-            console.error("Container not found!");
-            return;
-        }
-
-        const eventsRef = collection(db, 'containers', containerId, 'events');
-        const q = query(eventsRef, orderBy('timestamp', 'desc'));
-        const eventsSnapshot = await getDocs(q);
-        const events = eventsSnapshot.docs;
-
-        populateDetailsModal(containerDocSnap, events);
-        openDetailsModal();
-
-    } catch (error) {
-        console.error("Error fetching container details:", error);
-    }
-}
-
-
-// --- Firestore Write Functions ---
-export async function populateDropdowns(target = 'all') {
-    if (target === 'all' || target === 'bookings') await populateSelectWithOptions('bookings', 'bookingNumber', 'bookingNumber');
-    if (target === 'all' || target === 'trucks') await populateSelectWithOptions('trucks', 'truck', 'truckName');
-    if (target === 'all' || target === 'chassis') await populateSelectWithOptions('chassis', 'chassis', 'chassisName');
-}
-
-async function populateSelectWithOptions(collectionName, selectId, textField) {
-    const selectElement = document.getElementById(selectId);
-    if (!selectElement) return;
-    try {
-        const querySnapshot = await getDocs(collection(db, collectionName));
-        selectElement.innerHTML = `<option value="">-- Select ${selectId} --</option>`;
-        querySnapshot.forEach(doc => {
-            const data = doc.data();
-            const option = document.createElement('option');
-            option.value = doc.id;
-            option.textContent = data[textField];
-            selectElement.appendChild(option);
-        });
-    } catch (error) {
-        console.error(`Error populating ${collectionName}:`, error);
-        selectElement.innerHTML = `<option value="">Error loading data</option>`;
-    }
 }
 
 export async function handleNewContainerSubmit(e) {
@@ -114,7 +53,8 @@ export async function handleNewContainerSubmit(e) {
             bookingNumber: bookingNumberString,
             currentStatus: "In Yard",
             currentLocation: "Yard",
-            lastUpdatedAt: serverTimestamp()
+            lastUpdatedAt: serverTimestamp(),
+            collectedAt: serverTimestamp()
         });
 
         const eventRef = doc(collection(db, 'containers', containerNumber, 'events'));
@@ -142,10 +82,7 @@ export async function handleUpdateStatusSubmit(e) {
     const form = e.target;
     const action = form.dataset.action;
     const currentUser = auth.currentUser;
-    if (!currentUser) {
-        console.error("User not logged in");
-        return;
-    }
+    if (!currentUser) return;
 
     let newStatus = '';
     let newLocation = '';
@@ -164,10 +101,11 @@ export async function handleUpdateStatusSubmit(e) {
             break;
         case 'weighContainer':
             newStatus = '⚖️ Needs Weighing';
-            newLocation = 'Yard'; // Back in the yard after weighing
+            newLocation = 'Yard';
             details = {
                 newLocation,
                 weighAmount: form.weighAmount.value,
+                sealNumber: form.sealNumber.value,
                 truckId: form.truck.value,
                 chassisId: form.chassis.value,
             };
@@ -190,9 +128,7 @@ export async function handleUpdateStatusSubmit(e) {
             newLocation = 'Yard';
             details = { newLocation, reactivatedBy: currentUser.uid };
             break;
-        default:
-            console.error('Unknown update action:', action);
-            return;
+        default: return;
     }
 
     try {
@@ -220,7 +156,6 @@ export async function handleUpdateStatusSubmit(e) {
     }
 }
 
-
 export async function handleDeleteLastEvent(containerId, eventId, previousEventData) {
     if (document.body.dataset.userRole !== 'admin') {
         console.error("Permission denied: Only admins can delete events.");
@@ -229,22 +164,17 @@ export async function handleDeleteLastEvent(containerId, eventId, previousEventD
     
     try {
         const batch = writeBatch(db);
-
-        // 1. Delete the most recent event
         const eventToDeleteRef = doc(db, 'containers', containerId, 'events', eventId);
         batch.delete(eventToDeleteRef);
 
-        // 2. Revert the main container document to the previous state
         const containerRef = doc(db, 'containers', containerId);
         if (previousEventData) {
-            // Revert to the state of the event before the one being deleted
             batch.update(containerRef, {
                 currentStatus: previousEventData.status,
                 currentLocation: previousEventData.details.newLocation,
-                lastUpdatedAt: serverTimestamp() // Update the timestamp to now
+                lastUpdatedAt: serverTimestamp()
             });
         } else {
-            // This was the very first event. Revert to an initial state.
             batch.update(containerRef, {
                 currentStatus: "In Yard",
                 currentLocation: "Yard",
@@ -258,5 +188,41 @@ export async function handleDeleteLastEvent(containerId, eventId, previousEventD
     } catch (error) {
         console.error("Error reverting event:", error);
     }
+}
+
+export function stopListeningForContainers() { if (containersUnsubscribe) { containersUnsubscribe(); containersUnsubscribe = null; } }
+async function handleViewContainer(containerId) {
+    currentContainerId = containerId;
+    try {
+        const containerDocRef = doc(db, 'containers', containerId);
+        const containerDocSnap = await getDoc(containerDocRef);
+        if (!containerDocSnap.exists()) { console.error("Container not found!"); return; }
+        const eventsRef = collection(db, 'containers', containerId, 'events');
+        const q = query(eventsRef, orderBy('timestamp', 'desc'));
+        const eventsSnapshot = await getDocs(q);
+        const events = eventsSnapshot.docs;
+        populateDetailsModal(containerDocSnap, events);
+        openDetailsModal();
+    } catch (error) { console.error("Error fetching container details:", error); }
+}
+export async function populateDropdowns(target = 'all') {
+    if (target === 'all' || target === 'bookings') await populateSelectWithOptions('bookings', 'bookingNumber', 'bookingNumber');
+    if (target === 'all' || target === 'trucks') await populateSelectWithOptions('trucks', 'truck', 'truckName');
+    if (target === 'all' || target === 'chassis') await populateSelectWithOptions('chassis', 'chassis', 'chassisName');
+}
+async function populateSelectWithOptions(collectionName, selectId, textField) {
+    const selectElement = document.getElementById(selectId);
+    if (!selectElement) return;
+    try {
+        const querySnapshot = await getDocs(collection(db, collectionName));
+        selectElement.innerHTML = `<option value="">-- Select ${selectId} --</option>`;
+        querySnapshot.forEach(doc => {
+            const data = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = data[textField];
+            selectElement.appendChild(option);
+        });
+    } catch (error) { console.error(`Error populating ${collectionName}:`, error); }
 }
 

@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetButton = e.target.closest('.delete-event-btn');
         if (targetButton) {
             const { containerId, eventId, previousEvent } = targetButton.dataset;
+            // A custom confirmation modal would be better than window.confirm in a real app
             if (confirm('Are you sure you want to revert this last event? This cannot be undone.')) {
                 handleDeleteLastEvent(containerId, eventId, JSON.parse(previousEvent));
             }

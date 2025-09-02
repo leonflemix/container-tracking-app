@@ -1,50 +1,52 @@
 // js/auth.js
-// Handles all user authentication logic.
-
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { auth, db } from './firebase.js';
 import { showApp, showLogin, setUserRoleUI } from './ui.js';
 import { listenForContainers, stopListeningForContainers } from './firestore.js';
-
-// --- Functions ---
-export function handleLogin(e) {
-    e.preventDefault();
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const loginError = document.getElementById('loginError');
-    loginError.style.display = 'none';
-    
-    signInWithEmailAndPassword(auth, email, password)
-        .catch(error => {
-            console.error("Login Error:", error);
-            loginError.textContent = "Invalid email or password.";
-            loginError.style.display = 'block';
-        });
-}
-
-export function handleLogout() {
-    signOut(auth).catch(error => console.error("Logout Error:", error));
-}
+import { fetchAllUsers } from './users.js'; // Import the new user fetching function
 
 export function monitorAuthState() {
-    onAuthStateChanged(auth, async (user) => {
+    onAuthStateChanged(auth, async user => {
         if (user) {
-            // User is signed in
-            const userDocRef = doc(db, "users", user.uid);
+            const userDocRef = doc(db, 'users', user.uid);
             const userDocSnap = await getDoc(userDocRef);
-            let role = 'viewer'; // Default role
+            
+            let userRole = 'viewer'; // Default role
             if (userDocSnap.exists()) {
-               role = userDocSnap.data().role;
+                userRole = userDocSnap.data().role;
             }
+            
+            await fetchAllUsers(); // Cache all user data on successful login
+            setUserRoleUI(userRole, user.email);
+            
             showApp();
-            setUserRoleUI(role, user.email);
             listenForContainers();
         } else {
-            // User is signed out
+            setUserRoleUI(null, null);
             showLogin();
             stopListeningForContainers();
         }
     });
+}
+
+export async function handleLogin(e) {
+    e.preventDefault();
+    const email = e.target.email.value;
+    const password = e.target.password.value;
+    const errorEl = document.getElementById('loginError');
+    errorEl.style.display = 'none';
+
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+        errorEl.textContent = "Invalid email or password.";
+        errorEl.style.display = 'block';
+        console.error("Login failed:", error.message);
+    }
+}
+
+export async function handleLogout() {
+    await signOut(auth);
 }
 

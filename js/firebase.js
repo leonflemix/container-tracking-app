@@ -1,6 +1,5 @@
 // js/firebase.js
-// This file's only job is to initialize Firebase and export the services.
-
+// Initializes Firebase and exports the auth and db services.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
@@ -17,9 +16,7 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
 
-// Export the initialized services
-export { auth, db };
-
+// Export Firebase services
+export const auth = getAuth(app);
+export const db = getFirestore(app);
