@@ -1,25 +1,17 @@
 // js/auth.js
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { auth, db } from './firebase.js';
-import { showApp, showLogin, setUserRoleUI } from './ui.js';
+// Handles all user authentication logic (login, logout, state monitoring).
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { auth } from './firebase.js';
+import { uiElements, showApp, showLogin, setUserRoleUI } from './ui.js';
 import { listenForContainers, stopListeningForContainers } from './firestore.js';
-import { fetchAllUsers } from './users.js'; // Import the new user fetching function
+import { cacheUserData, getUserRole } from './users.js';
 
 export function monitorAuthState() {
-    onAuthStateChanged(auth, async user => {
+    onAuthStateChanged(auth, async (user) => {
         if (user) {
-            const userDocRef = doc(db, 'users', user.uid);
-            const userDocSnap = await getDoc(userDocRef);
-            
-            let userRole = 'viewer'; // Default role
-            if (userDocSnap.exists()) {
-                userRole = userDocSnap.data().role;
-            }
-            
-            await fetchAllUsers(); // Cache all user data on successful login
-            setUserRoleUI(userRole, user.email);
-            
+            await cacheUserData(user);
+            const role = getUserRole(user.uid);
+            setUserRoleUI(role, user.email);
             showApp();
             listenForContainers();
         } else {
@@ -32,21 +24,23 @@ export function monitorAuthState() {
 
 export async function handleLogin(e) {
     e.preventDefault();
-    const email = e.target.email.value;
-    const password = e.target.password.value;
-    const errorEl = document.getElementById('loginError');
-    errorEl.style.display = 'none';
-
+    const email = uiElements.loginForm.email.value;
+    const password = uiElements.loginForm.password.value;
     try {
         await signInWithEmailAndPassword(auth, email, password);
+        uiElements.loginError.style.display = 'none';
     } catch (error) {
-        errorEl.textContent = "Invalid email or password.";
-        errorEl.style.display = 'block';
         console.error("Login failed:", error.message);
+        uiElements.loginError.textContent = 'Invalid email or password. Please try again.';
+        uiElements.loginError.style.display = 'block';
     }
 }
 
 export async function handleLogout() {
-    await signOut(auth);
+    try {
+        await signOut(auth);
+    } catch (error) {
+        console.error("Logout failed:", error.message);
+    }
 }
 

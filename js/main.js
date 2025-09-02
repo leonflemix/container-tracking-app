@@ -23,18 +23,20 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Use event delegation for the dynamic form submissions and buttons
     uiElements.containerDetailsModal.addEventListener('click', (e) => {
+        // Handle form submissions via buttons with data-action
         const submitButton = e.target.closest('button[type="submit"]');
         if (submitButton) {
             const form = submitButton.closest('form');
             if (form && form.id === 'updateStatusForm') {
-                e.preventDefault(); // Prevent default form submission
-                handleUpdateStatusSubmit(e); // Pass the click event
+                e.preventDefault();
+                handleUpdateStatusSubmit(e);
             }
         }
 
+        // Handle revert button clicks
         const revertButton = e.target.closest('.delete-event-btn');
         if (revertButton) {
-            const { containerId, eventId, previousEvent } = revertButton.dataset;
+            const { containerId, eventId, previousEvent } from revertButton.dataset;
             if (confirm('Are you sure you want to revert this last event? This cannot be undone.')) {
                 handleDeleteLastEvent(containerId, eventId, JSON.parse(previousEvent));
             }

@@ -63,7 +63,7 @@ export function getStatusClass(status, location) {
         if (location && (location.toLowerCase() === 'track' || location.toLowerCase() === 'scale')) return 'status-tilter-yellow';
     }
     
-    if (['⚖️', '🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗', '👍🏻'].some(s => status.includes(s))) return 'status-action-required';
+    if (['🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗'].some(s => status.includes(s))) return 'status-action-required';
     if (lowerStatus.includes('yard')) return 'status-in-transit';
     if (lowerStatus.includes('pier')) return 'status-delivered';
     if (lowerStatus.includes('ready')) return 'status-success';
@@ -146,7 +146,7 @@ function renderUpdateForm(container) {
     if (status === 'In Yard') {
         formHTML = `
             <h3>Place in Tilter</h3>
-            <form id="updateStatusForm" data-action="placeInTilter">
+            <form id="updateStatusForm">
                 <div class="form-group">
                     <label for="tilterLocation">Tilter Location</label>
                     <select id="tilterLocation" required>
@@ -155,13 +155,13 @@ function renderUpdateForm(container) {
                         <option value="TRACK">TRACK</option>
                     </select>
                 </div>
-                <button type="submit" class="action-btn btn-primary">Update Status</button>
+                <button type="submit" class="action-btn btn-primary" data-action="placeInTilter">Update Status</button>
             </form>
         `;
     } else if (status === 'Placed in Tilter') {
         formHTML = `
             <h3>Mark as Loading Complete</h3>
-            <form id="updateStatusForm" data-action="loadingComplete">
+            <form id="updateStatusForm">
                  <div class="form-group">
                     <label for="tilterLocation">Confirm Location</label>
                     <select id="tilterLocation" required>
@@ -170,13 +170,13 @@ function renderUpdateForm(container) {
                         <option value="TRACK" ${container.currentLocation === 'TRACK' ? 'selected' : ''}>TRACK</option>
                     </select>
                 </div>
-                <button type="submit" class="action-btn btn-primary">Mark as Complete</button>
+                <button type="submit" class="action-btn btn-primary" data-action="loadingComplete">Mark as Complete</button>
             </form>
         `;
     } else if (status === 'Loading Complete') {
         formHTML = `
             <h3>Weigh Container</h3>
-            <form id="updateStatusForm" data-action="weighContainer">
+            <form id="updateStatusForm">
                 <div class="form-group">
                     <label for="weighAmount">Weight</label>
                     <input type="number" id="weighAmount" placeholder="e.g., 42000" required>
@@ -193,23 +193,23 @@ function renderUpdateForm(container) {
                     <label for="chassis">Chassis</label>
                     <select id="chassis" required><option>Loading...</option></select>
                 </div>
-                <button type="submit" class="action-btn btn-primary">Save Weight & Details</button>
+                <button type="submit" class="action-btn btn-primary" data-action="weighContainer">Save Weight & Details</button>
             </form>
         `;
-    } else if (status === 'Post-Weighing') {
+    } else if (status === 'Post-Weighing' || ['🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗'].some(s => status.includes(s))) {
          formHTML = `
             <h3>Assign Follow-up Actions</h3>
-            <form id="updateStatusForm" data-action="assignNextAction">
+            <form id="updateStatusForm">
                  <div class="form-group">
                     <label for="nextActions">Required Actions (select one or more)</label>
-                    <select id="nextActions" multiple required style="height: 100px;">
+                    <select id="nextActions" multiple style="height: 100px;">
                         <option value="🤛🏻💨">Needs Squishing</option>
                         <option value="👨🏻‍🏭">Needs Repairs</option>
                         <option value="🛞">Chassis Tire Repairs</option>
                     </select>
-                     <small>Hold Ctrl/Cmd to select multiple.</small>
+                     <small>Hold Ctrl/Cmd to select multiple. If no issues, leave blank and click "Mark as Ready".</small>
                 </div>
-                <button type="submit" class="action-btn btn-primary" data-action="assignNextAction">Assign Actions</button>
+                <button type="submit" class="action-btn btn-primary" data-action="assignNextAction">Update Actions</button>
                  <hr>
                  <div class="form-group">
                     <label>Or, assign final disposition:</label>
@@ -218,27 +218,26 @@ function renderUpdateForm(container) {
                 </div>
             </form>
         `;
-    } else if (['🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗', '👍🏻'].some(s => status.includes(s))) {
+    } else if (status === '👍🏻 Ready for Pier') {
          formHTML = `
             <h3>Mark as Returned to Pier</h3>
-            <form id="updateStatusForm" data-action="returnToPier">
-                <p>This will mark the container as complete.</p>
-                <button type="submit" class="action-btn btn-primary">Return to Pier</button>
+            <form id="updateStatusForm">
+                <p>This will mark the container as complete and ready for billing.</p>
+                <button type="submit" class="action-btn btn-primary" data-action="returnToPier">Return to Pier</button>
             </form>
         `;
     } else if (status === 'Returned to Pier' && document.body.dataset.userRole === 'admin') {
          formHTML = `
             <h3>Re-activate Rejected Container</h3>
-            <form id="updateStatusForm" data-action="reactivate">
+            <form id="updateStatusForm">
                 <p class="form-error" style="display:block;">Admin Only: This container was rejected. Re-activate to mark it for squishing.</p>
-                <button type="submit" class="action-btn btn-danger">Re-activate</button>
+                <button type="submit" class="action-btn btn-danger" data-action="reactivate">Re-activate</button>
             </form>
         `;
     }
 
     containerDiv.innerHTML = formHTML;
 
-    // IMPORTANT: Populate dropdowns AFTER the form is in the DOM
     if (status === 'Loading Complete') {
         populateDropdowns('trucks');
         populateDropdowns('chassis');

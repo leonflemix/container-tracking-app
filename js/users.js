@@ -1,23 +1,48 @@
 // js/users.js
-import { collection, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+// Manages a simple cache for user data to avoid repeated Firestore reads.
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { db } from './firebase.js';
 
 const userCache = new Map();
 
-export async function fetchAllUsers() {
-    if (userCache.size > 0) return; // Don't re-fetch if cache is populated
+export async function cacheUserData(user) {
+    if (!user || !user.uid) return;
+    if (userCache.has(user.uid)) return;
+
     try {
-        const querySnapshot = await getDocs(collection(db, 'users'));
-        querySnapshot.forEach(doc => {
-            // Assumes user doc has a 'name' field, otherwise defaults to 'email'
-            userCache.set(doc.id, doc.data().name || doc.data().email || 'Unknown User');
-        });
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            userCache.set(user.uid, {
+                name: userData.name || user.email, // Fallback to email if name is not set
+                email: user.email,
+                role: userData.role || 'viewer'
+            });
+        } else {
+            // If no user doc, cache with basic info from auth
+            userCache.set(user.uid, {
+                name: user.email,
+                email: user.email,
+                role: 'viewer' 
+            });
+        }
     } catch (error) {
-        console.error("Error fetching and caching users:", error);
+        console.error("Error caching user data:", error);
     }
 }
 
 export function getUserName(uid) {
-    return userCache.get(uid) || 'Unknown User';
+    if (userCache.has(uid)) {
+        return userCache.get(uid).name;
+    }
+    return uid; // Fallback to UID if not in cache
+}
+
+export function getUserRole(uid) {
+     if (userCache.has(uid)) {
+        return userCache.get(uid).role;
+    }
+    return 'viewer'; // Default to viewer
 }
 
