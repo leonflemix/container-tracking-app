@@ -33,11 +33,6 @@ export const uiElements = {
     detailsModalTitle: document.getElementById('detailsModalTitle'),
     currentContainerInfo: document.getElementById('currentContainerInfo'),
     eventHistoryList: document.getElementById('eventHistoryList'),
-    updateStatusForm: document.getElementById('updateStatusForm'),
-    updateFormError: document.getElementById('updateFormError'),
-    newStatus: document.getElementById('newStatus'),
-    locationFormGroup: document.getElementById('locationFormGroup'),
-    locationInputContainer: document.getElementById('locationInputContainer'),
     updateStatusContainer: document.getElementById('updateStatusContainer'),
 };
 
@@ -79,6 +74,23 @@ export function setUserRoleUI(role, email) {
     }
 }
 
+export function getStatusClass(status, location) {
+    if (!status) return 'status-pending';
+    const lowerStatus = status.toLowerCase();
+    
+    if (lowerStatus.includes('tilter') || lowerStatus.includes('loading complete')) {
+        if (location && location.toLowerCase() === 'shred') return 'status-tilter-blue';
+        if (location && (location.toLowerCase() === 'track' || location.toLowerCase() === 'scale')) return 'status-tilter-yellow';
+    }
+    
+    if (['⚖️', '🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗'].includes(status)) return 'status-action-required';
+    if (lowerStatus.includes('yard')) return 'status-in-transit';
+    if (lowerStatus.includes('pier')) return 'status-delivered';
+    if (lowerStatus.includes('ready')) return 'status-success';
+
+    return 'status-pending';
+}
+
 export function renderContainersTable(containers, onViewClick) {
     uiElements.containersTableBody.innerHTML = '';
     if (!containers || containers.length === 0) {
@@ -102,24 +114,6 @@ export function renderContainersTable(containers, onViewClick) {
         row.querySelector('.view-btn').addEventListener('click', () => onViewClick(container.id));
         uiElements.containersTableBody.appendChild(row);
     });
-}
-
-
-export function getStatusClass(status, location) {
-    if (!status) return 'status-pending';
-    const lowerStatus = status.toLowerCase();
-    
-    if (lowerStatus.includes('tilter') || lowerStatus.includes('loading complete')) {
-        if (location && location.toLowerCase() === 'shred') return 'status-tilter-blue';
-        if (location && (location.toLowerCase() === 'track' || location.toLowerCase() === 'scale')) return 'status-tilter-yellow';
-    }
-    
-    if (['⚖️', '🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗'].includes(status)) return 'status-action-required';
-    if (lowerStatus.includes('yard')) return 'status-in-transit';
-    if (lowerStatus.includes('pier')) return 'status-delivered';
-    if (lowerStatus.includes('ready')) return 'status-success';
-
-    return 'status-pending';
 }
 
 export function toggleMobileSidebar() {
@@ -160,10 +154,32 @@ export function populateDetailsModal(containerDoc, events) {
     `;
 
     renderEventHistory(events, data.currentLocation);
-    renderUpdateForm(data); // New function to render the dynamic form
+    renderUpdateForm(data);
 }
+
 function renderEventHistory(events, currentLocation) {
-    // ... existing event history rendering logic ...
+    uiElements.eventHistoryList.innerHTML = '';
+    if (events.length === 0) {
+        uiElements.eventHistoryList.innerHTML = '<p>No history found for this container.</p>';
+        return;
+    }
+
+    events.forEach(event => {
+        const eventData = event.data();
+        const timestamp = eventData.timestamp ? eventData.timestamp.toDate().toLocaleString('en-CA') : 'No date';
+        const eventEl = document.createElement('div');
+        eventEl.className = 'event-item';
+        eventEl.innerHTML = `
+            <div class="event-header">
+                <span>${eventData.status}</span>
+                <span class="event-time">${timestamp}</span>
+            </div>
+            <div class="event-details">
+                <p>User: ${eventData.userId ? eventData.userId.substring(0,8) : 'N/A'}... | Location: ${eventData.details.newLocation || currentLocation}</p>
+            </div>
+        `;
+        uiElements.eventHistoryList.appendChild(eventEl);
+    });
 }
 
 function renderUpdateForm(container) {
@@ -221,7 +237,7 @@ function renderUpdateForm(container) {
                 <button type="submit" class="action-btn btn-primary">Save Weight</button>
             </form>
         `;
-        populateDropdowns('truck');
+        populateDropdowns('trucks');
         populateDropdowns('chassis');
     } else if (status === '⚖️ Needs Weighing') {
          formHTML = `
@@ -259,60 +275,5 @@ function renderUpdateForm(container) {
     }
 
     containerDiv.innerHTML = formHTML;
-}
-export function handleStatusChange() {
-    const selectedStatus = uiElements.newStatus.value;
-    const locationFormGroup = uiElements.locationFormGroup;
-    const locationInputContainer = uiElements.locationInputContainer;
-    locationInputContainer.innerHTML = ''; // Clear previous input
-
-    switch (selectedStatus) {
-        case 'Placed in Tilter':
-            locationFormGroup.style.display = 'block';
-            const select = document.createElement('select');
-            select.id = 'newLocation';
-            select.className = 'form-control'; // Ensure styling
-            select.innerHTML = `
-                <option value="SHRED">SHRED</option>
-                <option value="SCALE">SCALE</option>
-                <option value="TRACK">TRACK</option>
-            `;
-            locationInputContainer.appendChild(select);
-            break;
-
-        case 'Loading Complete':
-            locationFormGroup.style.display = 'block';
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.id = 'newLocation';
-            input.required = true;
-            
-            const lastLocation = currentContainerForModal.currentLocation || '';
-            if (lastLocation.match(/SHRED|SCALE|TRACK/i)) {
-                 input.value = lastLocation;
-            } else {
-                input.placeholder = "Confirm tilter location (e.g., SHRED)";
-            }
-            locationInputContainer.appendChild(input);
-            break;
-        
-        case 'In Yard':
-        case 'Sent to Workshop':
-        case 'Squish':
-        case 'Ready':
-        case 'Returned to Pier':
-            locationFormGroup.style.display = 'none';
-            break;
-        
-        default:
-            locationFormGroup.style.display = 'block';
-             const defaultInput = document.createElement('input');
-            defaultInput.type = 'text';
-            defaultInput.id = 'newLocation';
-            defaultInput.required = true;
-            defaultInput.placeholder = 'Enter location';
-            locationInputContainer.appendChild(defaultInput);
-            break;
-    }
 }
 
