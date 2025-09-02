@@ -153,29 +153,44 @@ export function populateDetailsModal(containerDoc, events) {
         <p><strong>Current Location:</strong> ${data.currentLocation}</p>
     `;
 
-    renderEventHistory(events, data.currentLocation);
+    renderEventHistory(events);
     renderUpdateForm(data);
 }
 
-function renderEventHistory(events, currentLocation) {
+function renderEventHistory(events) {
     uiElements.eventHistoryList.innerHTML = '';
     if (events.length === 0) {
         uiElements.eventHistoryList.innerHTML = '<p>No history found for this container.</p>';
         return;
     }
 
-    events.forEach(event => {
+    events.forEach((event, index) => {
         const eventData = event.data();
         const timestamp = eventData.timestamp ? eventData.timestamp.toDate().toLocaleString('en-CA') : 'No date';
+        
+        let deleteButtonHTML = '';
+        if (index === 0 && document.body.dataset.userRole === 'admin') {
+            const previousEvent = events[1] ? events[1].data() : null;
+            deleteButtonHTML = `<button class="action-btn btn-danger delete-event-btn" 
+                                    data-container-id="${currentContainerForModal.id}" 
+                                    data-event-id="${event.id}"
+                                    data-previous-event='${JSON.stringify(previousEvent)}'>
+                                <i class="fas fa-trash"></i> Revert
+                             </button>`;
+        }
+
         const eventEl = document.createElement('div');
         eventEl.className = 'event-item';
         eventEl.innerHTML = `
             <div class="event-header">
                 <span>${eventData.status}</span>
-                <span class="event-time">${timestamp}</span>
+                <div class="event-actions">
+                    ${deleteButtonHTML}
+                    <span class="event-time">${timestamp}</span>
+                </div>
             </div>
             <div class="event-details">
-                <p>User: ${eventData.userId ? eventData.userId.substring(0,8) : 'N/A'}... | Location: ${eventData.details.newLocation || currentLocation}</p>
+                <p>User: ${eventData.userId ? eventData.userId.substring(0,8) : 'N/A'}... | Location: ${eventData.details.newLocation || 'N/A'}</p>
             </div>
         `;
         uiElements.eventHistoryList.appendChild(eventEl);

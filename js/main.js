@@ -1,7 +1,7 @@
 // js/main.js
 import { monitorAuthState, handleLogin, handleLogout } from './auth.js';
 import { uiElements, toggleMobileSidebar, openNewContainerModal, closeNewContainerModal, closeDetailsModal } from './ui.js';
-import { handleNewContainerSubmit, handleUpdateStatusSubmit } from './firestore.js';
+import { handleNewContainerSubmit, handleUpdateStatusSubmit, handleDeleteLastEvent } from './firestore.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     monitorAuthState();
@@ -21,10 +21,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // Container Details Modal Listeners
     uiElements.closeDetailsModalBtn.addEventListener('click', closeDetailsModal);
     
-    // Use event delegation for the dynamic form
+    // Event delegation for dynamic forms and buttons inside the modal
     uiElements.containerDetailsModal.addEventListener('submit', (e) => {
         if (e.target.id === 'updateStatusForm') {
             handleUpdateStatusSubmit(e);
         }
     });
+
+    uiElements.containerDetailsModal.addEventListener('click', (e) => {
+        const targetButton = e.target.closest('.delete-event-btn');
+        if (targetButton) {
+            const { containerId, eventId, previousEvent } = targetButton.dataset;
+            if (confirm('Are you sure you want to revert this last event? This cannot be undone.')) {
+                handleDeleteLastEvent(containerId, eventId, JSON.parse(previousEvent));
+            }
+        }
+    });
 });
+

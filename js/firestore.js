@@ -1,17 +1,18 @@
 // js/firestore.js
 // Contains all logic for interacting with the Firestore database.
 
-import { doc, getDoc, collection, onSnapshot, getDocs, writeBatch, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { doc, getDoc, collection, onSnapshot, getDocs, writeBatch, serverTimestamp, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { auth, db } from './firebase.js';
 import { renderContainersTable, uiElements, openDetailsModal, populateDetailsModal, closeDetailsModal, closeNewContainerModal } from './ui.js';
 
 let containersUnsubscribe = null;
-let currentContainerId = null; // To keep track of which container is open in the details modal
+let currentContainerId = null; 
 
 // --- Firestore Read Functions ---
 export function listenForContainers() {
     const containersRef = collection(db, 'containers');
-    containersUnsubscribe = onSnapshot(containersRef, (snapshot) => {
+    const q = query(containersRef, orderBy('lastUpdatedAt', 'desc'));
+    containersUnsubscribe = onSnapshot(q, (snapshot) => {
         if (snapshot.empty) {
             renderContainersTable([], handleViewContainer);
             return;
@@ -65,6 +66,7 @@ export async function populateDropdowns(target = 'all') {
 
 async function populateSelectWithOptions(collectionName, selectId, textField) {
     const selectElement = document.getElementById(selectId);
+    if (!selectElement) return;
     try {
         const querySnapshot = await getDocs(collection(db, collectionName));
         selectElement.innerHTML = `<option value="">-- Select ${selectId} --</option>`;
@@ -149,7 +151,6 @@ export async function handleUpdateStatusSubmit(e) {
     let newLocation = '';
     let details = {};
 
-    // Determine the update based on the form's action
     switch (action) {
         case 'placeInTilter':
             newLocation = form.tilterLocation.value;
@@ -173,11 +174,10 @@ export async function handleUpdateStatusSubmit(e) {
             break;
          case 'assignNextAction':
             newStatus = form.nextAction.value;
-            // Location depends on the action
             if (newStatus === '👨🏻‍🏭') newLocation = 'Workshop';
             else if (newStatus === '🏗') newLocation = 'IH Mathers';
             else if (newStatus === '👍🏻') newLocation = 'Yard - Ready';
-            else newLocation = 'Yard'; // Default for Squish, Tire repairs
+            else newLocation = 'Yard';
             details = { newLocation };
             break;
         case 'returnToPier':
@@ -186,7 +186,7 @@ export async function handleUpdateStatusSubmit(e) {
             details = { newLocation };
             break;
         case 'reactivate':
-            newStatus = '🤛🏻💨'; // Needs Squishing
+            newStatus = '🤛🏻💨';
             newLocation = 'Yard';
             details = { newLocation, reactivatedBy: currentUser.uid };
             break;
@@ -217,6 +217,46 @@ export async function handleUpdateStatusSubmit(e) {
 
     } catch (error) {
         console.error("Error updating container status:", error);
+    }
+}
+
+
+export async function handleDeleteLastEvent(containerId, eventId, previousEventData) {
+    if (document.body.dataset.userRole !== 'admin') {
+        console.error("Permission denied: Only admins can delete events.");
+        return;
+    }
+    
+    try {
+        const batch = writeBatch(db);
+
+        // 1. Delete the most recent event
+        const eventToDeleteRef = doc(db, 'containers', containerId, 'events', eventId);
+        batch.delete(eventToDeleteRef);
+
+        // 2. Revert the main container document to the previous state
+        const containerRef = doc(db, 'containers', containerId);
+        if (previousEventData) {
+            // Revert to the state of the event before the one being deleted
+            batch.update(containerRef, {
+                currentStatus: previousEventData.status,
+                currentLocation: previousEventData.details.newLocation,
+                lastUpdatedAt: serverTimestamp() // Update the timestamp to now
+            });
+        } else {
+            // This was the very first event. Revert to an initial state.
+            batch.update(containerRef, {
+                currentStatus: "In Yard",
+                currentLocation: "Yard",
+                lastUpdatedAt: serverTimestamp()
+            });
+        }
+
+        await batch.commit();
+        closeDetailsModal();
+
+    } catch (error) {
+        console.error("Error reverting event:", error);
     }
 }
 

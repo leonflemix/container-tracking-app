@@ -118,11 +118,51 @@
                     </div>
 
                     <div class="stats-grid">
-                        <!-- ... stats cards ... -->
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <h3>Total Containers</h3>
+                                <div class="stat-icon bg-primary">
+                                    <i class="fas fa-box"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value">1,248</div>
+                            <div class="stat-title">+12% from last month</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <h3>In Transit</h3>
+                                <div class="stat-icon bg-warning">
+                                    <i class="fas fa-ship"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value">384</div>
+                            <div class="stat-title">+5% from last week</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <h3>Delivered</h3>
+                                <div class="stat-icon bg-success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value">827</div>
+                            <div class="stat-title">+8% from last month</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <h3>Alerts</h3>
+                                <div class="stat-icon bg-danger">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value">12</div>
+                            <div class="stat-title">-3% from last week</div>
+                        </div>
                     </div>
 
                     <!-- Tables Section -->
                     <div class="table-section">
+                        <!-- Containers Table -->
                         <div class="table-card">
                             <div class="table-header">
                                 <h3>Recent Containers</h3>
@@ -145,11 +185,16 @@
                                 </table>
                             </div>
                         </div>
+
+                        <!-- Users Table (Admin Only) -->
+                        <div class="table-card admin-only">
+                            <!-- ... existing user table ... -->
+                        </div>
                     </div>
 
                     <!-- Footer -->
                     <div class="footer">
-                        <p>© 2025 ContainerTrack Pro | Version 3.1.0</p>
+                        <p>© 2025 ContainerTrack Pro | Version 3.0.0</p>
                     </div>
                 </div>
             </div>
@@ -164,31 +209,29 @@
                 <button class="close-modal" id="closeNewContainerModalBtn">&times;</button>
             </div>
             <form id="newContainerForm">
-                 <div class="modal-body">
-                    <div class="form-group">
-                        <label for="containerNumber">Container Number</label>
-                        <input type="text" id="containerNumber" placeholder="e.g., MSMU1234567" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="bookingNumber">Booking Number</label>
-                        <select id="bookingNumber" required>
-                            <option value="">Loading Bookings...</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="truck">Truck Used</label>
-                        <select id="truck" required>
-                            <option value="">Loading Trucks...</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="chassis">Chassis Used</label>
-                        <select id="chassis" required>
-                            <option value="">Loading Chassis...</option>
-                        </select>
-                    </div>
-                    <p class="form-error" id="formError"></p>
+                <div class="form-group">
+                    <label for="containerNumber">Container Number</label>
+                    <input type="text" id="containerNumber" placeholder="e.g., MSMU1234567" required>
                 </div>
+                <div class="form-group">
+                    <label for="bookingNumber">Booking Number</label>
+                    <select id="bookingNumber" required>
+                        <option value="">Loading Bookings...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="truck">Truck Used</label>
+                    <select id="truck" required>
+                        <option value="">Loading Trucks...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="chassis">Chassis Used</label>
+                    <select id="chassis" required>
+                        <option value="">Loading Chassis...</option>
+                    </select>
+                </div>
+                <p class="form-error" id="formError"></p>
                 <div class="modal-footer">
                     <button type="button" class="action-btn btn-secondary" id="cancelNewContainerModalBtn">Cancel</button>
                     <button type="submit" class="action-btn btn-primary">Save Container</button>
@@ -213,9 +256,29 @@
                             <!-- Current data will be populated here -->
                         </div>
                         <hr>
-                        <div id="updateStatusContainer" class="manager-only admin-only">
-                             <!-- Dynamic form for updating status will be injected here -->
-                        </div>
+                        <h3 class="manager-only admin-only">Update Status</h3>
+                        <form id="updateStatusForm" class="manager-only admin-only">
+                             <div class="form-group">
+                                <label for="newStatus">New Status</label>
+                                <select id="newStatus" required>
+                                    <option value="In Yard">In Yard</option>
+                                    <option value="Placed in Tilter">Placed in Tilter</option>
+                                    <option value="Loading Complete">Loading Complete</option>
+                                    <option value="Sent to Workshop">Sent to Workshop</option>
+                                    <option value="Squish">Squish</option>
+                                    <option value="Ready">Ready</option>
+                                    <option value="Returned to Pier">Returned to Pier</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="locationFormGroup">
+                                <label for="newLocation" id="newLocationLabel">New Location</label>
+                                 <div id="locationInputContainer">
+                                    <!-- Dynamic input will be injected here by JavaScript -->
+                                </div>
+                            </div>
+                             <p class="form-error" id="updateFormError"></p>
+                            <button type="submit" class="action-btn btn-primary">Add Event</button>
+                        </form>
                     </div>
                     <!-- Right side: Event History -->
                     <div class="details-history">
@@ -229,7 +292,8 @@
         </div>
     </div>
 
+
+    <!-- Link to the new main JavaScript file -->
     <script type="module" src="js/main.js" defer></script>
 </body>
 </html>
-
