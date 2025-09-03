@@ -2,7 +2,8 @@
 // Handles all user authentication logic (login, logout, state monitoring).
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { auth } from './firebase.js';
-import { uiElements, showApp, showLogin, setUserRoleUI } from './ui.js';
+import { uiElements } from './ui/elements.js';
+import { showApp, showLogin, setUserRoleUI } from './ui/actions.js';
 import { listenForContainers, stopListeningForContainers } from './firestore.js';
 import { cacheUserData, getUserRole } from './users.js';
 
@@ -28,11 +29,15 @@ export async function handleLogin(e) {
     const password = uiElements.loginForm.password.value;
     try {
         await signInWithEmailAndPassword(auth, email, password);
-        uiElements.loginError.style.display = 'none';
+        const loginError = document.getElementById('loginError');
+        if(loginError) loginError.style.display = 'none';
     } catch (error) {
         console.error("Login failed:", error.message);
-        uiElements.loginError.textContent = 'Invalid email or password. Please try again.';
-        uiElements.loginError.style.display = 'block';
+        const loginError = document.getElementById('loginError');
+        if(loginError) {
+            loginError.textContent = 'Invalid email or password. Please try again.';
+            loginError.style.display = 'block';
+        }
     }
 }
 
