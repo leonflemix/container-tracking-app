@@ -3,7 +3,7 @@ import { populateDropdowns } from './firestore.js';
 import { getUserName } from './users.js';
 
 let currentContainerForModal = null;
-let uiElements = {};
+export let uiElements = {};
 
 // This function will be called AFTER the HTML is loaded.
 export function initializeUI() {
