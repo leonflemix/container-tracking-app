@@ -1,7 +1,9 @@
 // js/firestore.js
 import { doc, getDoc, collection, onSnapshot, getDocs, writeBatch, serverTimestamp, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { auth, db } from './firebase.js';
-import { renderContainersTable, uiElements, openDetailsModal, populateDetailsModal, closeDetailsModal, closeNewContainerModal } from './ui.js';
+import { uiElements } from './ui/elements.js';
+import { renderContainersTable, populateDetailsModal } from './ui/render.js';
+import { openDetailsModal, closeDetailsModal, closeNewContainerModal } from './ui/actions.js';
 
 let containersUnsubscribe = null;
 let currentContainerId = null; 
@@ -226,14 +228,13 @@ async function handleViewContainer(containerId) {
     } catch (error) { console.error("Error fetching container details:", error); }
 }
 export async function populateDropdowns(target = 'all') {
-    // A specific fix to target the dropdowns inside the modal, which may not exist when this is first called.
     if (target === 'trucks') await populateSelectWithOptions('trucks', 'truck', 'truckName');
     else if (target === 'chassis') await populateSelectWithOptions('chassis', 'chassis', 'chassisName');
     else if (target === 'all' || target === 'bookings') await populateSelectWithOptions('bookings', 'bookingNumber', 'bookingNumber');
 }
 async function populateSelectWithOptions(collectionName, selectId, textField) {
     const selectElement = document.getElementById(selectId);
-    if (!selectElement) return; // Exit if the element (e.g., inside a hidden modal) doesn't exist yet.
+    if (!selectElement) return;
     try {
         const querySnapshot = await getDocs(collection(db, collectionName));
         selectElement.innerHTML = `<option value="">-- Select ${selectId} --</option>`;
