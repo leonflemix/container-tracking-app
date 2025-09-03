@@ -1,9 +1,15 @@
 // js/main.js
+import { loadPartials } from './htmlLoader.js';
 import { monitorAuthState, handleLogin, handleLogout } from './auth.js';
-import { uiElements, toggleMobileSidebar, openNewContainerModal, closeNewContainerModal, closeDetailsModal } from './ui.js';
+import { initializeUI, toggleMobileSidebar, openNewContainerModal, closeNewContainerModal, closeDetailsModal } from './ui.js';
 import { handleNewContainerSubmit, handleUpdateStatusSubmit, handleDeleteLastEvent } from './firestore.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Load all HTML partials first
+    await loadPartials();
+
+    // 2. Now that the DOM is complete, initialize UI elements and attach listeners
+    const uiElements = initializeUI();
     monitorAuthState();
 
     // Attach all event listeners
@@ -23,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Use event delegation for the dynamic form submissions and buttons
     uiElements.containerDetailsModal.addEventListener('click', (e) => {
-        // Handle form submissions via buttons with data-action
         const submitButton = e.target.closest('button[type="submit"]');
         if (submitButton) {
             const form = submitButton.closest('form');
@@ -33,7 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Handle revert button clicks
         const revertButton = e.target.closest('.delete-event-btn');
         if (revertButton) {
             const { containerId, eventId, previousEvent } = revertButton.dataset;

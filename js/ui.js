@@ -3,37 +3,51 @@ import { populateDropdowns } from './firestore.js';
 import { getUserName } from './users.js';
 
 let currentContainerForModal = null;
+let uiElements = {};
 
-export const uiElements = {
-    loginPage: document.getElementById('loginPage'),
-    appContainer: document.getElementById('appContainer'),
-    loginForm: document.getElementById('loginForm'),
-    logoutButton: document.getElementById('logoutButton'),
-    userAvatar: document.getElementById('userAvatar'),
-    userName: document.getElementById('userName'),
-    userRole: document.getElementById('userRole'),
-    adminElements: document.querySelectorAll('.admin-only'),
-    managerElements: document.querySelectorAll('.manager-only'),
-    toggleSidebar: document.getElementById('toggleSidebar'),
-    sidebar: document.getElementById('sidebar'),
-    sidebarBackdrop: document.getElementById('sidebarBackdrop'),
-    containersTableBody: document.getElementById('containers-table-body'),
-    newContainerModal: document.getElementById('newContainerModal'),
-    newContainerBtn: document.getElementById('newContainerBtn'),
-    closeNewContainerModalBtn: document.getElementById('closeNewContainerModalBtn'),
-    cancelNewContainerModalBtn: document.getElementById('cancelNewContainerModalBtn'),
-    newContainerForm: document.getElementById('newContainerForm'),
-    formError: document.getElementById('formError'),
-    containerDetailsModal: document.getElementById('containerDetailsModal'),
-    closeDetailsModalBtn: document.getElementById('closeDetailsModalBtn'),
-    detailsModalTitle: document.getElementById('detailsModalTitle'),
-    currentContainerInfo: document.getElementById('currentContainerInfo'),
-    eventHistoryList: document.getElementById('eventHistoryList'),
-    updateStatusContainer: document.getElementById('updateStatusContainer'),
-};
+// This function will be called AFTER the HTML is loaded.
+export function initializeUI() {
+    uiElements = {
+        loginPage: document.getElementById('loginPage'),
+        appContainer: document.getElementById('appContainer'),
+        loginForm: document.getElementById('loginForm'),
+        logoutButton: document.getElementById('logoutButton'),
+        userAvatar: document.getElementById('userAvatar'),
+        userName: document.getElementById('userName'),
+        userRole: document.getElementById('userRole'),
+        adminElements: document.querySelectorAll('.admin-only'),
+        managerElements: document.querySelectorAll('.manager-only'),
+        toggleSidebar: document.getElementById('toggleSidebar'),
+        sidebar: document.getElementById('sidebar'),
+        sidebarBackdrop: document.getElementById('sidebarBackdrop'),
+        containersTableBody: document.getElementById('containers-table-body'),
+        newContainerModal: document.getElementById('newContainerModal'),
+        newContainerBtn: document.getElementById('newContainerBtn'),
+        closeNewContainerModalBtn: document.getElementById('closeNewContainerModalBtn'),
+        cancelNewContainerModalBtn: document.getElementById('cancelNewContainerModalBtn'),
+        newContainerForm: document.getElementById('newContainerForm'),
+        formError: document.getElementById('formError'),
+        containerDetailsModal: document.getElementById('containerDetailsModal'),
+        closeDetailsModalBtn: document.getElementById('closeDetailsModalBtn'),
+        detailsModalTitle: document.getElementById('detailsModalTitle'),
+        currentContainerInfo: document.getElementById('currentContainerInfo'),
+        eventHistoryList: document.getElementById('eventHistoryList'),
+        updateStatusContainer: document.getElementById('updateStatusContainer'),
+    };
+    return uiElements;
+}
 
-export function showApp() { uiElements.loginPage.style.display = 'none'; uiElements.appContainer.style.display = 'block'; }
-export function showLogin() { uiElements.appContainer.style.display = 'none'; uiElements.loginPage.style.display = 'flex'; }
+
+export function showApp() { 
+    document.getElementById('login-partial').style.display = 'none';
+    document.getElementById('app-container-partial').style.display = 'block';
+}
+
+export function showLogin() { 
+    document.getElementById('app-container-partial').style.display = 'none';
+    document.getElementById('login-partial').style.display = 'block';
+}
+
 export function setUserRoleUI(role, email) {
     document.body.dataset.userRole = role;
     uiElements.adminElements.forEach(el => el.style.display = 'none');
@@ -72,6 +86,7 @@ export function getStatusClass(status, location) {
 }
 
 export function renderContainersTable(containers, onViewClick) {
+    if (!uiElements.containersTableBody) return;
     uiElements.containersTableBody.innerHTML = '';
     if (!containers || containers.length === 0) {
         uiElements.containersTableBody.innerHTML = '<tr><td colspan="5">No containers found.</td></tr>';
