@@ -4,13 +4,13 @@ import { uiElements } from './elements.js';
 import { populateDropdowns } from '../firestore.js';
 
 export function showApp() { 
-    document.getElementById('login-partial').style.display = 'none';
-    document.getElementById('app-container-partial').style.display = 'block';
+    uiElements.loginPage.style.display = 'none';
+    uiElements.appContainer.style.display = 'flex';
 }
 
 export function showLogin() { 
-    document.getElementById('app-container-partial').style.display = 'none';
-    document.getElementById('login-partial').style.display = 'block';
+    uiElements.appContainer.style.display = 'none';
+    uiElements.loginPage.style.display = 'flex';
 }
 
 export function setUserRoleUI(role, email) {
@@ -58,3 +58,4 @@ export function openDetailsModal() {
 export function closeDetailsModal() { 
     uiElements.containerDetailsModal.classList.add('hidden'); 
 }
+

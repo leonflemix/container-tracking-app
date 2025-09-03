@@ -62,7 +62,8 @@ function renderEventHistory(events) {
         const timestamp = eventData.timestamp ? eventData.timestamp.toDate().toLocaleString('en-CA') : 'No date';
         
         let revertButtonHTML = '';
-        if (index === 0 && events.length > 1 && document.body.dataset.userRole === 'admin') {
+        // Show revert button on the latest event, as long as it's not the very first event ('Collected from Pier')
+        if (index === 0 && eventData.status !== 'Collected from Pier' && document.body.dataset.userRole === 'admin') {
             const previousEvent = events[1] ? events[1].data() : null;
             revertButtonHTML = `<button class="action-btn btn-danger delete-event-btn" 
                                     data-container-id="${currentContainerForModal.id}" 
@@ -149,7 +150,7 @@ function renderUpdateForm(container) {
                 <button type="submit" class="action-btn btn-primary" data-action="weighContainer">Save Weight & Details</button>
             </form>
         `;
-    } else if (status === 'Post-Weighing' || ['🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗'].some(s => status.includes(s))) {
+    } else if (status === 'Post-Weighing' || ['🤛🏻💨', '👨🏻‍🏭', '🛞'].some(s => status.includes(s))) {
          formHTML = `
             <h3>Assign Follow-up Actions</h3>
             <form id="updateStatusForm">
@@ -191,6 +192,7 @@ function renderUpdateForm(container) {
 
     containerDiv.innerHTML = formHTML;
 
+    // IMPORTANT: Populate dropdowns AFTER the form is in the DOM
     if (status === 'Loading Complete') {
         populateDropdowns('trucks');
         populateDropdowns('chassis');
@@ -205,3 +207,4 @@ export function populateDetailsModal(containerDoc, events) {
     renderEventHistory(events);
     renderUpdateForm(data);
 }
+

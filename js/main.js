@@ -1,15 +1,14 @@
 // js/main.js
-import { loadPartials } from './htmlLoader.js';
 import { monitorAuthState, handleLogin, handleLogout } from './auth.js';
-import { initializeUI, toggleMobileSidebar, openNewContainerModal, closeNewContainerModal, closeDetailsModal } from './ui.js';
+import { initializeUI } from './ui/elements.js';
+import { toggleMobileSidebar, openNewContainerModal, closeNewContainerModal, closeDetailsModal } from './ui/actions.js';
 import { handleNewContainerSubmit, handleUpdateStatusSubmit, handleDeleteLastEvent } from './firestore.js';
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Load all HTML partials first
-    await loadPartials();
-
-    // 2. Now that the DOM is complete, initialize UI elements and attach listeners
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Initialize UI elements references AFTER the DOM is loaded
     const uiElements = initializeUI();
+    
+    // 2. Start authentication monitoring
     monitorAuthState();
 
     // Attach all event listeners
