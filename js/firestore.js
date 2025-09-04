@@ -1,5 +1,5 @@
 // js/firestore.js
-import { doc, getDoc, collection, onSnapshot, getDocs, writeBatch, serverTimestamp, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { doc, getDoc, collection, onSnapshot, getDocs, writeBatch, serverTimestamp, query, orderBy, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { auth, db } from './firebase.js';
 import { uiElements } from './ui/elements.js';
 import { renderContainersTable, populateDetailsModal } from './ui/render.js';
@@ -46,17 +46,19 @@ export async function handleNewContainerSubmit(e) {
 
     try {
         const bookingDoc = await getDoc(doc(db, 'bookings', bookingId));
-        const bookingNumberString = bookingDoc.exists() ? bookingDoc.data().bookingNumber : 'Unknown';
+        const bookingData = bookingDoc.exists() ? bookingDoc.data() : { bookingNumber: 'Unknown', containerType: 'Unknown' };
 
         const batch = writeBatch(db);
         
         const containerRef = doc(db, 'containers', containerNumber);
         batch.set(containerRef, {
-            bookingNumber: bookingNumberString,
+            bookingNumber: bookingData.bookingNumber,
+            containerType: bookingData.containerType,
             currentStatus: "In Yard",
             currentLocation: "Yard",
             lastUpdatedAt: serverTimestamp(),
-            collectedAt: serverTimestamp()
+            collectedAt: serverTimestamp(),
+            currentChassisId: null 
         });
 
         const eventRef = doc(collection(db, 'containers', containerNumber, 'events'));
@@ -77,12 +79,11 @@ export async function handleNewContainerSubmit(e) {
     }
 }
 
-export async function handleUpdateStatusSubmit(e) {
-    e.preventDefault();
+export async function handleUpdateStatusSubmit(submitButton) {
     if (!currentContainerId) return;
 
-    const form = e.target.closest('form');
-    const action = e.submitter?.dataset.action || form.dataset.action;
+    const form = submitButton.closest('form');
+    const action = submitButton.dataset.action;
 
     const currentUser = auth.currentUser;
     if (!currentUser) return;
@@ -91,69 +92,91 @@ export async function handleUpdateStatusSubmit(e) {
     let newLocation = '';
     let details = {};
 
-    switch (action) {
-        case 'placeInTilter':
-            newLocation = form.tilterLocation.value;
-            newStatus = 'Placed in Tilter';
-            details = { newLocation };
-            break;
-        case 'loadingComplete':
-            newLocation = form.tilterLocation.value;
-            newStatus = 'Loading Complete';
-            details = { newLocation };
-            break;
-        case 'weighContainer':
-            const chassisDoc = await getDoc(doc(db, 'chassis', form.chassis.value));
-            const chassisName = chassisDoc.exists() ? chassisDoc.data().chassisName : 'Unknown Chassis';
-            newStatus = 'Post-Weighing';
-            newLocation = `Chassis ${chassisName}`;
-            details = {
-                newLocation,
-                weighAmount: form.weighAmount.value,
-                sealNumber: form.sealNumber.value,
-                truckId: form.truck.value,
-                chassisId: form.chassis.value,
-            };
-            break;
-         case 'assignNextAction':
-            const selectedActions = Array.from(form.nextActions.selectedOptions).map(opt => opt.value);
-            // If no issues are selected, this button does nothing, user should click "Mark as Ready"
-            if (selectedActions.length === 0) {
-                alert("Please select at least one action or click 'Mark as Ready for Pier'.");
-                return;
-            }
-            newStatus = selectedActions.join(', ');
-            const containerDoc = await getDoc(doc(db, 'containers', currentContainerId));
-            newLocation = containerDoc.data().currentLocation; 
-            details = { newLocation, assignedActions: selectedActions };
-            break;
-        case 'moveToMathers':
-            newStatus = '🏗 At IH Mathers';
-            newLocation = 'IH Mathers';
-            details = { newLocation };
-            break;
-        case 'markAsReady':
-            newStatus = '👍🏻 Ready for Pier';
-            const currentContainer = await getDoc(doc(db, 'containers', currentContainerId));
-            newLocation = currentContainer.data().currentLocation;
-            details = { newLocation };
-            break;
-        case 'returnToPier':
-            newStatus = 'Returned to Pier';
-            newLocation = 'Pier';
-            details = { newLocation };
-            break;
-        case 'reactivate':
-            newStatus = '🤛🏻💨';
-            newLocation = 'Yard';
-            details = { newLocation, reactivatedBy: currentUser.uid };
-            break;
-        default: return;
-    }
-
     try {
-        const batch = writeBatch(db);
         const containerRef = doc(db, 'containers', currentContainerId);
+        const currentContainerSnap = await getDoc(containerRef);
+        const currentContainerData = currentContainerSnap.data();
+
+        switch (action) {
+            case 'placeInTilter':
+                newLocation = form.tilterLocation.value;
+                newStatus = 'Placed in Tilter';
+                details = { newLocation };
+                break;
+            case 'loadingComplete':
+                newLocation = form.tilterLocation.value;
+                newStatus = 'Loading Complete';
+                details = { newLocation };
+                break;
+            case 'weighContainer':
+                const chassisId = form.chassis.value;
+                const chassisDoc = await getDoc(doc(db, 'chassis', chassisId));
+                const chassisName = chassisDoc.exists() ? chassisDoc.data().chassisName : 'Unknown Chassis';
+                newStatus = 'Post-Weighing';
+                newLocation = `Chassis ${chassisName}`;
+                details = {
+                    newLocation,
+                    weighAmount: form.weighAmount.value,
+                    sealNumber: form.sealNumber.value,
+                    truckId: form.truck.value,
+                    chassisId: chassisId,
+                };
+                await updateDoc(containerRef, { currentChassisId: chassisId });
+                break;
+             case 'assignNextAction':
+                const selectedActions = Array.from(form.nextActions.selectedOptions).map(opt => opt.value);
+                if (selectedActions.length === 0) {
+                    alert("Please select at least one action or click 'Mark as Ready for Pier'.");
+                    return;
+                }
+                newStatus = selectedActions.join(', ');
+                
+                if (currentContainerData.currentChassisId) {
+                    const linkedChassisDoc = await getDoc(doc(db, 'chassis', currentContainerData.currentChassisId));
+                    const linkedChassisName = linkedChassisDoc.exists() ? linkedChassisDoc.data().chassisName : 'Unknown';
+                    newLocation = `Chassis ${linkedChassisName}`;
+                } else {
+                    newLocation = currentContainerData.currentLocation; 
+                }
+                details = { newLocation, assignedActions: selectedActions };
+                break;
+            case 'moveToMathers':
+                newStatus = '🏗 At IH Mathers';
+                newLocation = 'IH Mathers';
+                details = { newLocation };
+                await updateDoc(containerRef, { currentChassisId: null });
+                break;
+            case 'moveToWorkshop':
+                newStatus = '👨🏻‍🏭 At Workshop';
+                if (currentContainerData.currentChassisId) {
+                    const linkedChassisDoc = await getDoc(doc(db, 'chassis', currentContainerData.currentChassisId));
+                    const linkedChassisName = linkedChassisDoc.exists() ? linkedChassisDoc.data().chassisName : 'Unknown';
+                    newLocation = `Workshop (Chassis ${linkedChassisName})`;
+                } else {
+                    newLocation = 'Workshop';
+                }
+                details = { newLocation };
+                break;
+            case 'markAsReady':
+                newStatus = '👍🏻 Ready for Pier';
+                newLocation = currentContainerData.currentLocation;
+                details = { newLocation };
+                break;
+            case 'returnToPier':
+                newStatus = 'Returned to Pier';
+                newLocation = 'Pier';
+                details = { newLocation };
+                await updateDoc(containerRef, { currentChassisId: null });
+                break;
+            case 'reactivate':
+                newStatus = '🤛🏻💨';
+                newLocation = 'Yard';
+                details = { newLocation, reactivatedBy: currentUser.uid };
+                break;
+            default: return;
+        }
+
+        const batch = writeBatch(db);
         batch.update(containerRef, {
             currentStatus: newStatus,
             currentLocation: newLocation,
@@ -173,6 +196,7 @@ export async function handleUpdateStatusSubmit(e) {
 
     } catch (error) {
         console.error("Error updating container status:", error);
+        alert("An error occurred. Please check the console for details.");
     }
 }
 
@@ -196,7 +220,6 @@ export async function handleDeleteLastEvent(containerId, eventId, previousEventD
                 lastUpdatedAt: serverTimestamp()
             });
         } else {
-            // This case should ideally not happen if revert is disabled for the first event
             batch.update(containerRef, {
                 currentStatus: "In Yard",
                 currentLocation: "Yard",

@@ -15,7 +15,7 @@ export function getStatusClass(status, location) {
         if (location && (location.toLowerCase() === 'track' || location.toLowerCase() === 'scale')) return 'status-tilter-yellow';
     }
     
-    if (['🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗'].some(s => status.includes(s))) return 'status-action-required';
+    if (['🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗', 'at workshop'].some(s => status.includes(s))) return 'status-action-required';
     if (lowerStatus.includes('yard')) return 'status-in-transit';
     if (lowerStatus.includes('pier')) return 'status-delivered';
     if (lowerStatus.includes('ready')) return 'status-success';
@@ -62,7 +62,6 @@ function renderEventHistory(events) {
         const timestamp = eventData.timestamp ? eventData.timestamp.toDate().toLocaleString('en-CA') : 'No date';
         
         let revertButtonHTML = '';
-        // Show revert button on the latest event, as long as it's not the very first event ('Collected from Pier')
         if (index === 0 && eventData.status !== 'Collected from Pier' && document.body.dataset.userRole === 'admin') {
             const previousEvent = events[1] ? events[1].data() : null;
             revertButtonHTML = `<button class="action-btn btn-danger delete-event-btn" 
@@ -150,7 +149,7 @@ function renderUpdateForm(container) {
                 <button type="submit" class="action-btn btn-primary" data-action="weighContainer">Save Weight & Details</button>
             </form>
         `;
-    } else if (status === 'Post-Weighing' || ['🤛🏻💨', '👨🏻‍🏭', '🛞'].some(s => status.includes(s))) {
+    } else if (status === 'Post-Weighing' || ['🤛🏻💨', '👨🏻‍🏭', '🛞', '🏗', 'At Workshop'].some(s => status.includes(s))) {
          formHTML = `
             <h3>Assign Follow-up Actions</h3>
             <form id="updateStatusForm">
@@ -168,6 +167,7 @@ function renderUpdateForm(container) {
                  <div class="form-group">
                     <label>Or, assign final disposition:</label>
                     <button type="submit" class="action-btn btn-secondary" data-action="moveToMathers">Move to IH Mathers</button>
+                    <button type="submit" class="action-btn btn-danger" data-action="moveToWorkshop">Take to Workshop</button>
                     <button type="submit" class="action-btn btn-success" data-action="markAsReady">Mark as Ready for Pier</button>
                 </div>
             </form>
